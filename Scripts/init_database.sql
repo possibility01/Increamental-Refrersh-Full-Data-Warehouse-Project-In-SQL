@@ -12,3 +12,35 @@ WARNING:
     All data in the database will be permanently deleted. Proceed with caution 
     and ensure you have proper backups before running this script.
 */
+USE master;
+GO 
+
+----------creating a new database or drop if already exist
+
+--drop datawarehouse
+IF EXISTS (SELECT 1
+                FROM sys.databases
+                WHERE name = 'DataWarehouse' )
+
+BEGIN 
+    ALTER DATABASE DataWarehouse SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
+    DROP DATABASE DataWarehouse
+END;
+
+---creating new one if after dropped if exist or not
+Create DATABASE DataWarehouse
+
+--Switch to the newly created datawarehouse
+USE DataWarehouse;
+
+
+---Create the schemas
+CREATE SCHEMA bronze;
+Go
+CREATE SCHEMA silver;
+Go
+CREATE SCHEMA gold;
+Go
+
+
+
