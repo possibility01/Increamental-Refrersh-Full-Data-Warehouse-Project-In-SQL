@@ -109,4 +109,5 @@ CREATE TABLE bronze.customers (
                                is_deleted INT
                                
                       );
+
 GO
