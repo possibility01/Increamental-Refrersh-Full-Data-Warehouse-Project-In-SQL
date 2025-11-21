@@ -35,6 +35,7 @@ USE DataWarehouse;
 
 
 ---Create the schemas
+
 CREATE SCHEMA bronze;
 Go
 CREATE SCHEMA silver;
