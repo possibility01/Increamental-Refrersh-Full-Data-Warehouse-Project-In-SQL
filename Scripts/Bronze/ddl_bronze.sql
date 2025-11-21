@@ -8,7 +8,8 @@ Script Purpose:
 	  Run this script to re-define the DDL structure of 'bronze' Tables
 =============================================================================
 */
-
+USE DataWarehouse
+GO
 
 IF OBJECT_ID ('bronze.products' , 'U' ) IS NOT NULL
     DROP TABLE bronze.products;
@@ -38,8 +39,8 @@ IF OBJECT_ID ('bronze.payments' , 'U' ) IS NOT NULL
     DROP TABLE bronze.payments;
 
 CREATE TABLE bronze.payments (
-                            payment_id INT,
-                            order_id INT,
+                            payment_id NVARCHAR(50),
+                            order_id NVARCHAR(50),
                             amount FLOAT,
                             payment_method NVARCHAR(50),
                             payment_gateway NVARCHAR(50),
@@ -55,13 +56,12 @@ IF OBJECT_ID ('bronze.orders' , 'U' ) IS NOT NULL
     DROP TABLE bronze.orders;
 
 CREATE TABLE bronze.orders (
-                            order_id INT,
-                            customer_id INT,
+                            order_id NVARCHAR(50),
+                            customer_id NVARCHAR(50),
                             order_status NVARCHAR(50),
                             shipping_method	NVARCHAR(50),
                             payment_terms	NVARCHAR(50),
                             shipping_fee FLOAT,
-                            delivery_city NVARCHAR(50),
                             created_at DATETIME,
                             updated_at DATETIME,
                             is_deleted INT
@@ -72,16 +72,16 @@ IF OBJECT_ID ('bronze.order_items' , 'U' ) IS NOT NULL
     DROP TABLE bronze.order_items;
 
 CREATE TABLE bronze.order_items (
-                               order_item_id INT,
-                               order_id	INT,
-                               product_id INT,
+                               order_item_id NVARCHAR (50),
+                               order_id	NVARCHAR (50),
+                               product_id NVARCHAR (50),
                                quantity	INT,
                                unit_price FLOAT,
                                tax	FLOAT,
                                discount_amount FLOAT,
                                fulfilled_by	NVARCHAR (50),    
                                created_at DATETIME,
-                               updated_at DATETIME,
+                               updated_at DATETIME
                                
                       );
 GO
@@ -96,8 +96,7 @@ CREATE TABLE bronze.customers (
                                email NVARCHAR(50),
                                phone INT,	
                                gender	NVARCHAR(50),
-                               city	NVARCHAR(50),
-                               country NVARCHAR(50),
+                               city	NVARCHAR(50),                          
                                age INT,
                                income_level	NVARCHAR(50),
                                loyalty_score INT,
