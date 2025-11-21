@@ -258,7 +258,7 @@ BEGIN TRY
             payment_id, order_id, amount, payment_method, payment_gateway,
             payment_status, currency, exchange_rate, created_at, updated_at, @batch_id
         FROM bronze.staging_payments
-        WHERE TRY_CAST(updated_at AS DATETIME) > @last_ingestion;
+        WHERE TRY_CAST(updated_at AS DATETIME) > @last_ingestion;   
     END
 
     UPDATE bronze.bronze_control

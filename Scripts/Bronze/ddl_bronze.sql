@@ -142,7 +142,7 @@ CREATE TABLE bronze.staging_order_items (
                                created_at DATETIME,
                                updated_at DATETIME
                                
-                      );
+                   );
 GO
 
 IF OBJECT_ID ('bronze.order_items' , 'U' ) IS NOT NULL
