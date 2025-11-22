@@ -1,42 +1,129 @@
-
-    USE DataWarehouse;
-    GO
-    USE DataWarehouse;
-GO
-
 /*
-===========================================================================================
-1) CONTROL TABLE PROCEDURE
+==========================================================================
+Stored Procedure: bronze.control_table
+==========================================================================
 Purpose:
-    - Create a control table that keeps track of the last ingestion datetime and batch ID
-    - This table is essential for incremental load logic
-===========================================================================================
+    Ensures that the control table for the Bronze layer exists and is properly initialized.
+    The control table is used to track incremental and full load ETL runs for all Bronze tables.
+
+Actions Performed:
+    - Checks if the control table 'bronze.bronze_control' exists.
+    - Creates the control table if it does not exist.
+    - Inserts initial rows for all relevant Bronze tables with a default timestamp ('2000-01-01').
+    - Logs creation time and status messages to assist with monitoring.
+
+Parameters:
+    None
+    This stored procedure does not accept or return any values.
+
+Usage Example:
+    EXEC bronze.control_table;
+
+Control Table Schema:
+    table_name              NVARCHAR(50)  -- Name of the table being tracked
+    last_ingestion_datetime DATETIME      -- Timestamp of the last ETL run
+    last_batch_id           NVARCHAR(50)  -- Batch ID of the last ETL run
+
+Notes:
+    - Default initialization timestamp is '2000-01-01'.
+    - Ensure the procedure is executed before running incremental/full loads.
+==========================================================================
+==========================================================================
+Stored Procedure: bronze.staging_tables
+==========================================================================
+Purpose:
+    Loads raw data from external updating CSV files into the staging tables in the Bronze schema.
+
+Actions Performed:
+    - Truncates each staging table to ensure a fresh copy before loading.
+    - Uses BULK INSERT to load data from external CSV files into staging tables.
+    - Logs start and end times for each table load to track duration and performance.
+
+Parameters:
+    None
+    This stored procedure does not accept or return any values.
+
+Usage Example:
+    EXEC bronze.staging_tables;
+
+Tables Loaded:
+    - bronze.staging_customers
+    - bronze.staging_products
+    - bronze.staging_orders
+    - bronze.staging_order_items
+    - bronze.staging_payments
+
+Notes:
+    - CSV files must exist in the specified file paths.
+    - Ensure correct file permissions to allow BULK INSERT operations.
+    - Recommended to run this procedure before performing initial/incremental Bronze loads.
+==========================================================================
+
+==========================================================================
+Stored Procedure: bronze.initial_incremental_load
+==========================================================================
+Purpose:
+    Performs the initial full load and subsequent incremental loads from staging tables
+    into the main Bronze tables, while tracking ETL progress using the control table.
+
+Actions Performed:
+    - Checks the last ingestion timestamp from the control table for each Bronze table.
+    - Performs full load if the table has never been loaded (default timestamp: '2000-01-01').
+    - Performs incremental load for records updated after the last ingestion timestamp.
+    - Generates a batch ID for each ETL run to track loads.
+    - Updates the control table with the new ingestion timestamp and batch ID.
+    - Logs start and end times for each table load for performance tracking.
+    - Ensures data integrity using transactions; rolls back in case of errors.
+
+Parameters:
+    None
+    This stored procedure does not accept or return any values.
+
+Usage Example:
+    EXEC bronze.initial_incremental_load;
+
+Tables Loaded:
+    - bronze.customers
+    - bronze.products
+    - bronze.orders
+    - bronze.order_items
+    - bronze.payments
+
+Notes:
+    - Make sure staging tables are loaded prior to executing this procedure.
+    - Recommended to execute bronze.control_table first to ensure control table exists.
+    - Batch ID format: 'yyyyMMdd_HHmm'.
+    - Errors during ETL will trigger transaction rollback for all affected tables.
+==========================================================================
 */
 
 
-    CREATE OR ALTER PROCEDURE bronze.control_table AS
+
+USE DataWarehouse;
+GO
+
+CREATE OR ALTER PROCEDURE bronze.control_table AS
+BEGIN
+    -- Variables to track start and end time for logging purposes 
+    DECLARE @START_TIME_CONTROL_TABLE DATETIME,
+            @END_TIME_CONTROL_TABLE DATETIME;
+
+    PRINT '================================================================';
+    PRINT 'Starting Control Table Creation for Incremental Refresh Logic';
+    PRINT '--------------------------------------------------------------';
+    SET @START_TIME_CONTROL_TABLE = GETDATE();
+
+    -- Check if the control table already exists
+    IF OBJECT_ID('bronze.bronze_control','U') IS NULL
     BEGIN
-          
-        DECLARE @START_TIME_CONTROL_TABLE DATETIME,  @END_TIME_CONTROL_TABLE DATETIME;
-
-      -- ===================================================================
-        -- 1) Control Table Setup (Run once)
-        -- ===================================================================
-
-         PRINT'================================================================'
-         PRINT 'Creating Control Table for Incremental Refresh Logic'
-         PRINT'--------------------------------------------------------------'
-         SET @START_TIME_CONTROL_TABLE = GETDATE()
-
-        IF OBJECT_ID('bronze.bronze_control','U') IS NULL
-        BEGIN
-
+        -- Create the control table
         CREATE TABLE bronze.bronze_control (
-            table_name NVARCHAR(50) PRIMARY KEY,
-            last_ingestion_datetime DATETIME,
-            last_batch_id NVARCHAR(50)
+            table_name NVARCHAR(50) PRIMARY KEY,       -- Name of the table being tracked
+            last_ingestion_datetime DATETIME,          -- Timestamp of last ETL run
+            last_batch_id NVARCHAR(50)                 -- Batch ID for last ETL run
         );
 
+        -- Insert initial rows for all relevant bronze tables
         INSERT INTO bronze.bronze_control (table_name, last_ingestion_datetime, last_batch_id)
         VALUES 
             ('customers', '2000-01-01', NULL),
@@ -44,19 +131,41 @@ Purpose:
             ('orders', '2000-01-01', NULL),
             ('order_items', '2000-01-01', NULL),
             ('payments', '2000-01-01', NULL);
-      SET @END_TIME_CONTROL_TABLE = GETDATE()
-      
 
-     PRINT'---------------------------------------------------------------------------------------------------------------------------------------------'
-     PRINT ' Control Table for Incremental Refresh Logic Creation Completed,Total Creation Time:' + CAST (DATEDIFF(SECOND,@START_TIME_CONTROL_TABLE,@END_TIME_CONTROL_TABLE) AS NVARCHAR) +'Seconds'
-     PRINT'================================================================================================================================'
+        SET @END_TIME_CONTROL_TABLE = GETDATE();
 
-    END 
-    GO
-
-    CREATE OR ALTER PROCEDURE bronze.staging_tables AS
+        PRINT '----------------------------------------------------------------';
+        PRINT 'Control Table successfully created and initialized.';
+        PRINT 'Total Creation Time: ' + CAST(DATEDIFF(SECOND,@START_TIME_CONTROL_TABLE,@END_TIME_CONTROL_TABLE) AS NVARCHAR) + ' seconds';
+        PRINT '================================================================';
+    END
+    ELSE
     BEGIN
+        -- Table already exists
+        SET @END_TIME_CONTROL_TABLE = GETDATE();
 
+        PRINT '----------------------------------------------------------------';
+        PRINT 'Control Table already exists. No changes made.';
+        PRINT 'Total Duration Checked: ' + CAST(DATEDIFF(SECOND,@START_TIME_CONTROL_TABLE,@END_TIME_CONTROL_TABLE) AS NVARCHAR) + ' seconds';
+        PRINT '================================================================';
+    END
+END
+GO
+
+
+/*
+===========================================================================================
+2) STAGING TABLE LOAD PROCEDURE
+Purpose:
+    - Load CSV files into staging tables (bronze layer)
+    - Uses TRUNCATE + BULK INSERT to refresh staging tables
+    - Timing is captured for each table load
+===========================================================================================
+*/
+
+CREATE OR ALTER PROCEDURE bronze.staging_tables AS
+BEGIN
+        -- Variables to capture start and end times for logging
         DECLARE @Start_time_staging_load DATETIME ,@END_time_staging_load DATETIME ,
                 @Start_time_staging_load_customer DATETIME , @END_time_staging_load_customer DATETIME , 
                 @Start_time_staging_load_order DATETIME , @End_time_staging_load_order DATETIME ,
@@ -77,7 +186,11 @@ Purpose:
          SET @Start_time_staging_load_customer = GETDATE()
 
         -- Customers Table
+
+        -- Clear old staging data
         TRUNCATE TABLE bronze.staging_customers;
+
+        -- Load new data from CSV
         BULK INSERT bronze.staging_customers
         FROM 'C:\Users\eBay\source\repos\NewRepo\Datasets\customers.csv'
         WITH (FIRSTROW = 2, FIELDTERMINATOR = ',', TABLOCK);
@@ -85,7 +198,8 @@ Purpose:
         SET @End_time_staging_load_customer =  GETDATE()
 
         PRINT'---------------------------------------------------------------------------------------------------------------------------------------------'
-        PRINT ' Customer Table Loading Completed,Total Creation Time:' + CAST (DATEDIFF(SECOND,@Start_time_staging_load_customer ,@End_time_staging_load_customer) AS NVARCHAR) +'Seconds'
+        PRINT ' Customer Table Loading Completed,Total Creation Time:' + 
+        CAST (DATEDIFF(SECOND,@Start_time_staging_load_customer ,@End_time_staging_load_customer) AS NVARCHAR) +'Seconds'
         PRINT'-------------------------------------------------------------------------------------------------------------------------------------------------------------'
 
         PRINT 'Loading the Staging Products Table'
@@ -102,7 +216,8 @@ Purpose:
         SET @End_time_staging_load_product =  GETDATE()
 
         PRINT'---------------------------------------------------------------------------------------------------------------------------------------------'
-        PRINT ' Product Table Loading Completed,Total Creation Time:' + CAST (DATEDIFF(SECOND,@Start_time_staging_load_product ,@End_time_staging_load_product) AS NVARCHAR) +'Seconds'
+        PRINT ' Product Table Loading Completed,Total Creation Time:' +
+        CAST (DATEDIFF(SECOND,@Start_time_staging_load_product ,@End_time_staging_load_product) AS NVARCHAR) +'Seconds'
         PRINT'-------------------------------------------------------------------------------------------------------------------------------------------------------------'
 
         PRINT 'Loading the Staging Order Table'
@@ -118,7 +233,8 @@ Purpose:
         SET @End_time_staging_load_order =  GETDATE()
 
         PRINT'---------------------------------------------------------------------------------------------------------------------------------------------'
-        PRINT ' Order Table Loading Completed,Total Creation Time:' + CAST (DATEDIFF(SECOND,@Start_time_staging_load_order ,@End_time_staging_load_order) AS NVARCHAR) +'Seconds'
+        PRINT ' Order Table Loading Completed,Total Creation Time:' + 
+        CAST (DATEDIFF(SECOND,@Start_time_staging_load_order ,@End_time_staging_load_order) AS NVARCHAR) +'Seconds'
         PRINT'-------------------------------------------------------------------------------------------------------------------------------------------------------------'
 
         PRINT 'Loading the Staging Order_Items Table'
@@ -134,7 +250,8 @@ Purpose:
         SET @End_time_staging_load_order_items =  GETDATE()
 
         PRINT'---------------------------------------------------------------------------------------------------------------------------------------------'
-        PRINT ' Order_Items Table Loading Completed,Total Creation Time:' + CAST (DATEDIFF(SECOND,@Start_time_staging_load_order_items ,@End_time_staging_load_order_items) AS NVARCHAR) +'Seconds'
+        PRINT ' Order_Items Table Loading Completed,Total Creation Time:' + 
+        CAST (DATEDIFF(SECOND,@Start_time_staging_load_order_items ,@End_time_staging_load_order_items) AS NVARCHAR) +'Seconds'
         PRINT'-------------------------------------------------------------------------------------------------------------------------------------------------------------'
 
         PRINT 'Loading the Staging Payments Table'
@@ -150,27 +267,42 @@ Purpose:
         SET @End_time_staging_load_payments =  GETDATE()
 
         PRINT'---------------------------------------------------------------------------------------------------------------------------------------------'
-        PRINT ' Payment Table Loading Completed,Total Creation Time:' + CAST (DATEDIFF(SECOND,@Start_time_staging_load_payments ,@End_time_staging_load_payments) AS NVARCHAR) +'Seconds'
+        PRINT ' Payment Table Loading Completed,Total Creation Time:' +
+        CAST (DATEDIFF(SECOND,@Start_time_staging_load_payments ,@End_time_staging_load_payments) AS NVARCHAR) +'Seconds'
         PRINT'-------------------------------------------------------------------------------------------------------------------------------------------------------------'
         
         SET @END_time_staging_load = GETDATE()
 
         PRINT'======================================================================================================================================='
-        PRINT ' Staging Tables Loading Completed,Total Creation Time:' + CAST (DATEDIFF(SECOND,@Start_time_staging_load ,@End_time_staging_load) AS NVARCHAR) +'Seconds'
+        PRINT ' Staging Tables Loading Completed,Total Creation Time:' + 
+        CAST (DATEDIFF(SECOND,@Start_time_staging_load ,@End_time_staging_load) AS NVARCHAR) +'Seconds'
         PRINT'========================================================================================================================================================================='
-    END 
+END 
+GO
 
-    GO
+/*
+===========================================================================================
+3) INITIAL / INCREMENTAL LOAD PROCEDURE
+Purpose:
+    - Loads data from staging into bronze tables
+    - Supports full load (initial) and incremental load based on last ingestion
+    - Updates control table after each table load
+    - Uses TRY-CATCH with transaction to ensure ETL consistency
+===========================================================================================
+*/
 
-    CREATE OR ALTER PROCEDURE bronze.inital_increamental_load AS
-    BEGIN
+CREATE OR ALTER PROCEDURE bronze.inital_increamental_load AS
+BEGIN
         -- ===================================================================
         -- 3) Incremental / Full Load per Table
         -- ===================================================================
         BEGIN TRY
             BEGIN TRANSACTION;
 
+            -- Batch ID for this ETL run
+
             DECLARE @batch_id NVARCHAR(50) = FORMAT(GETDATE(), 'yyyyMMdd_HHmm'),@last_ingestion DATETIME,
+             -- Timing variables for logging (one pair per table)
                     @Start_time_initial_load_increamental DATETIME ,@END_time_initial_load_increamental DATETIME ,
                     @Start_time_intial_load_customer DATETIME , @END_time_intial_load_customer DATETIME ,
                     @Start_time_increamental_load_customer DATETIME , @END_time_increamental_load_customer DATETIME ,
@@ -196,7 +328,7 @@ Purpose:
             WHERE table_name = 'customers';
 
             
-
+            -- Full load if never ingested
             IF @last_ingestion <= '2000-01-01'
 
             
@@ -219,12 +351,14 @@ Purpose:
 
                 SET @END_time_intial_load_customer = GETDATE()
                 PRINT'---------------------------------------------------------------------------------------------------------------------------------------------'
-                PRINT ' Customer Table Inital Loading Completed,Total Creation Time:' + CAST (DATEDIFF(SECOND,@Start_time_intial_load_customer ,@END_time_intial_load_customer) AS NVARCHAR) +'Seconds'
+                PRINT ' Customer Table Inital Loading Completed,Total Creation Time:'
+                + CAST (DATEDIFF(SECOND,@Start_time_intial_load_customer ,@END_time_intial_load_customer) AS NVARCHAR) +'Seconds'
                 PRINT'-------------------------------------------------------------------------------------------------------------------------------------------------------------'
 
             END
             ELSE
             BEGIN
+            -- Incremental load based on last ingestion datetime
                 SET @Start_time_increamental_load_customer = GETDATE()
                 INSERT INTO bronze.customers (
                     customer_id, first_name, last_name, email, phone, gender, city, 
@@ -240,18 +374,26 @@ Purpose:
             SET @END_time_increamental_load_customer = GETDATE()
 
             PRINT'---------------------------------------------------------------------------------------------------------------------------------------------'
-            PRINT ' Customer Table Increamental Loading Completed,Total Creation Time:' + CAST (DATEDIFF(SECOND,@Start_time_increamental_load_customer ,@END_time_increamental_load_customer) AS NVARCHAR) +'Seconds'
+            PRINT ' Customer Table Increamental Loading Completed,Total Creation Time:' 
+            + CAST (DATEDIFF(SECOND,@Start_time_increamental_load_customer ,@END_time_increamental_load_customer) AS NVARCHAR) +'Seconds'
             PRINT'-------------------------------------------------------------------------------------------------------------------------------------------------------------'
 
             END
-
+            -- Update control table for this table
             UPDATE bronze.bronze_control
             SET last_ingestion_datetime = GETDATE(),
                 last_batch_id = @batch_id
             WHERE table_name = 'customers';
 
             TRUNCATE TABLE bronze.staging_customers;
-
+            
+        /*
+            Similarly repeat the pattern for products, orders, order_items, payments
+            - Check last ingestion in control table
+            - Full load if <= 2000-01-01
+            - Otherwise incremental based on updated_at
+            - Update control table after load
+        */
             -- ------------------------------
             -- Products
             -- ------------------------------
@@ -276,7 +418,8 @@ Purpose:
 
                 SET @END_time_intial_load_product = GETDATE()
                 PRINT'---------------------------------------------------------------------------------------------------------------------------------------------'
-                PRINT ' Product Table Inital Loading Completed,Total Creation Time:' + CAST (DATEDIFF(SECOND,@Start_time_intial_load_product ,@END_time_intial_load_product) AS NVARCHAR) +'Seconds'
+                PRINT ' Product Table Inital Loading Completed,Total Creation Time:' 
+                + CAST (DATEDIFF(SECOND,@Start_time_intial_load_product ,@END_time_intial_load_product) AS NVARCHAR) +'Seconds'
                 PRINT'-------------------------------------------------------------------------------------------------------------------------------------------------------------'
 
             END
@@ -295,7 +438,8 @@ Purpose:
 
                 SET @END_time_increamental_load_product = GETDATE()
                 PRINT'---------------------------------------------------------------------------------------------------------------------------------------------'
-                PRINT ' Product Table Increamental Loading Completed,Total Creation Time:' + CAST (DATEDIFF(SECOND,@Start_time_increamental_load_product ,@END_time_increamental_load_product) AS NVARCHAR) +'Seconds'
+                PRINT ' Product Table Increamental Loading Completed,Total Creation Time:' 
+                + CAST (DATEDIFF(SECOND,@Start_time_increamental_load_product ,@END_time_increamental_load_product) AS NVARCHAR) +'Seconds'
                 PRINT'-------------------------------------------------------------------------------------------------------------------------------------------------------------'
 
             END
@@ -331,7 +475,8 @@ Purpose:
                 SET @END_time_intial_load_order =GETDATE()
 
                 PRINT'---------------------------------------------------------------------------------------------------------------------------------------------'
-                PRINT ' Order Table Inital Loading Completed,Total Creation Time:' + CAST (DATEDIFF(SECOND,@Start_time_intial_load_order ,@END_time_intial_load_order) AS NVARCHAR) +'Seconds'
+                PRINT ' Order Table Inital Loading Completed,Total Creation Time:'
+                + CAST (DATEDIFF(SECOND,@Start_time_intial_load_order ,@END_time_intial_load_order) AS NVARCHAR) +'Seconds'
                 PRINT'-------------------------------------------------------------------------------------------------------------------------------------------------------------'
 
             END
@@ -351,7 +496,8 @@ Purpose:
 
                 SET @END_time_increamental_load_order = GETDATE()
                 PRINT'---------------------------------------------------------------------------------------------------------------------------------------------'
-                PRINT ' Order Table Increamental Loading Completed,Total Creation Time:' + CAST (DATEDIFF(SECOND,@Start_time_increamental_load_order,@END_time_increamental_load_order) AS NVARCHAR) +'Seconds'
+                PRINT ' Order Table Increamental Loading Completed,Total Creation Time:'
+                + CAST (DATEDIFF(SECOND,@Start_time_increamental_load_order,@END_time_increamental_load_order) AS NVARCHAR) +'Seconds'
                 PRINT'-------------------------------------------------------------------------------------------------------------------------------------------------------------'
 
             END
@@ -387,7 +533,8 @@ Purpose:
 
                 SET @END_time_intial_load_order_items = GETDATE()
                 PRINT'---------------------------------------------------------------------------------------------------------------------------------------------'
-                PRINT ' Order_Items Table Inital Loading Completed,Total Creation Time:' + CAST (DATEDIFF(SECOND,@Start_time_intial_load_order_items,@END_time_intial_load_order_items) AS NVARCHAR) +'Seconds'
+                PRINT ' Order_Items Table Inital Loading Completed,Total Creation Time:' 
+                + CAST (DATEDIFF(SECOND,@Start_time_intial_load_order_items,@END_time_intial_load_order_items) AS NVARCHAR) +'Seconds'
                 PRINT'-------------------------------------------------------------------------------------------------------------------------------------------------------------'
 
             END
@@ -407,7 +554,8 @@ Purpose:
                 SET @END_time_increamental_order_items = GETDATE()
 
                 PRINT'---------------------------------------------------------------------------------------------------------------------------------------------'
-                PRINT ' Order_Items Table Increamental Loading Completed,Total Creation Time:' + CAST (DATEDIFF(SECOND,@Start_time_increamental_order_items,@END_time_increamental_order_items) AS NVARCHAR) +'Seconds'
+                PRINT ' Order_Items Table Increamental Loading Completed,Total Creation Time:' 
+                + CAST (DATEDIFF(SECOND,@Start_time_increamental_order_items,@END_time_increamental_order_items) AS NVARCHAR) +'Seconds'
                 PRINT'-------------------------------------------------------------------------------------------------------------------------------------------------------------'
 
             END
@@ -443,7 +591,8 @@ Purpose:
 
                 SET @END_time_intial_load_payment = GETDATE()
                 PRINT'---------------------------------------------------------------------------------------------------------------------------------------------'
-                PRINT ' Payment Table Initial Loading Completed,Total Creation Time:' + CAST (DATEDIFF(SECOND,@Start_time_intial_load_payment,@END_time_intial_load_payment) AS NVARCHAR) +'Seconds'
+                PRINT ' Payment Table Initial Loading Completed,Total Creation Time:'
+                + CAST (DATEDIFF(SECOND,@Start_time_intial_load_payment,@END_time_intial_load_payment) AS NVARCHAR) +'Seconds'
                 PRINT'-------------------------------------------------------------------------------------------------------------------------------------------------------------'
 
             END
@@ -466,7 +615,8 @@ Purpose:
                 SET @END_time_increamental_load_payment = GETDATE()
 
                 PRINT'---------------------------------------------------------------------------------------------------------------------------------------------'
-                PRINT ' Payment Table Increamental Loading Completed,Total Creation Time:' + CAST (DATEDIFF(SECOND,@Start_time_increamental_load_payment,@END_time_increamental_load_payment) AS NVARCHAR) +'Seconds'
+                PRINT ' Payment Table Increamental Loading Completed,Total Creation Time:' 
+                + CAST (DATEDIFF(SECOND,@Start_time_increamental_load_payment,@END_time_increamental_load_payment) AS NVARCHAR) +'Seconds'
                 PRINT'-------------------------------------------------------------------------------------------------------------------------------------------------------------'
 
 
@@ -490,5 +640,5 @@ Purpose:
         END CATCH;
     
 
-    END 
+ END 
 
