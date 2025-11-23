@@ -292,7 +292,7 @@ Purpose:
 */
 
 CREATE OR ALTER PROCEDURE bronze.inital_increamental_load AS
-BEGIN
+
         -- ===================================================================
         -- 3) Incremental / Full Load per Table
         -- ===================================================================
@@ -640,5 +640,5 @@ BEGIN
         END CATCH;
     
 
- END 
+  
 
