@@ -196,6 +196,117 @@ BEGIN
 				SET last_ingestion_datetime = GETDATE(),
 					last_batch_id = @batch_id
 				WHERE table_name = 'customers';
+
+	SELECT  @last_ingestion_datetime = last_ingestion_datetime 
+	FROM silver.control_table
+	WHERE table_name = 'products';
+	IF @last_ingestion_datetime <= '2000-01-01'
+	
+		BEGIN
+	
+			INSERT INTO silver.products(
+										  product_id,
+										  product_name,
+										  category,
+										  brand,
+										  price,
+										  discount,
+										  rating,
+										  stock,
+										  weight_g ,
+										  color,
+										  created_at
+										  ,updated_at,
+										  is_deleted,
+										  batch_id
+											   )
+
+
+
+				SELECT  
+					product_id ,
+					CASE WHEN
+						product_name  IS NULL THEN 'N/A'
+					ELSE REPLACE(LOWER(TRIM(product_name)),'@','a') END product_name ,
+					CASE WHEN
+						category  IS NULL THEN 'N/A'
+					ELSE REPLACE(LOWER(TRIM(category)),'@','a') END category,
+					CASE WHEN
+						brand  IS NULL THEN 'N/A'
+					ELSE REPLACE(LOWER(TRIM(brand)),'@','a') END brand,
+					price,
+					discount,
+					rating,
+					stock,
+					weight_g,
+					CASE WHEN
+						color  IS NULL THEN 'N/A'
+					ELSE REPLACE(LOWER(TRIM(color)),'@','a') END color,
+					created_at,
+					updated_at,
+					is_deleted,
+					batch_id = @batch_id
+
+
+				FROM bronze.products
+		END
+		ELSE 
+			BEGIN
+
+				INSERT INTO silver.products(
+										  product_id,
+										  product_name,
+										  category,
+										  brand,
+										  price,
+										  discount,
+										  rating,
+										  stock,
+										  weight_g ,
+										  color,
+										  created_at
+										  ,updated_at,
+										  is_deleted,
+										  batch_id
+											   )
+
+
+
+				SELECT 
+
+					product_id ,
+					CASE WHEN
+						product_name  IS NULL THEN 'N/A'
+					ELSE REPLACE(LOWER(TRIM(product_name)),'@','a') END product_name ,
+					CASE WHEN
+						category  IS NULL THEN 'N/A'
+					ELSE REPLACE(LOWER(TRIM(category)),'@','a') END category,
+					CASE WHEN
+						brand  IS NULL THEN 'N/A'
+					ELSE REPLACE(LOWER(TRIM(brand)),'@','a') END brand,
+					price,
+					discount,
+					rating,
+					stock,
+					weight_g,
+					CASE WHEN
+						color  IS NULL THEN 'N/A'
+					ELSE REPLACE(LOWER(TRIM(color)),'@','a') END color,
+					created_at,
+					updated_at,
+					is_deleted,
+					batch_id = @batch_id
+
+
+				FROM bronze.products
+				WHERE TRY_CAST (updated_at AS DATETIME) > @last_ingestion_datetime ;
+				
+			END
+			-- Update control table for this table
+				UPDATE silver.control_table
+				SET last_ingestion_datetime = GETDATE(),
+					last_batch_id = @batch_id
+				WHERE table_name = 'customers';
 END
 GO
 
