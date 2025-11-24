@@ -197,6 +197,8 @@ BEGIN
 					last_batch_id = @batch_id
 				WHERE table_name = 'customers';
 
+
+
 	SELECT  @last_ingestion_datetime = last_ingestion_datetime 
 	FROM silver.control_table
 	WHERE table_name = 'products';
@@ -306,10 +308,194 @@ BEGIN
 				UPDATE silver.control_table
 				SET last_ingestion_datetime = GETDATE(),
 					last_batch_id = @batch_id
-				WHERE table_name = 'customers';
+				WHERE table_name = 'products';
+
+
+
+	SELECT  @last_ingestion_datetime = last_ingestion_datetime 
+	FROM silver.control_table
+	WHERE table_name = 'payments';
+	IF @last_ingestion_datetime <= '2000-01-01'
+	
+		BEGIN
+	
+			INSERT INTO silver.payments(
+										payment_id,
+										order_id,
+										amount,
+										payment_method,
+										payment_gateway ,
+										payment_status,
+										currency,
+										exchange_rate,
+										created_at,
+										updated_at,
+										batch_id 
+											   )
+
+
+
+				SELECT 
+					payment_id,
+					order_id,
+					amount,
+					CASE WHEN
+						payment_method  IS NULL THEN 'N/A'
+					ELSE REPLACE(LOWER(TRIM(payment_method)),'@','a') END payment_method,
+					CASE WHEN
+						payment_gateway  IS NULL THEN 'N/A'
+					ELSE REPLACE(LOWER(TRIM(payment_gateway)),'@','a') END payment_gateway,
+					CASE WHEN
+						payment_status  IS NULL THEN 'N/A'
+					ELSE REPLACE(LOWER(TRIM(payment_status)),'@','a') END payment_status,
+					CASE WHEN
+						currency  IS NULL THEN 'N/A'
+					ELSE REPLACE(UPPER(TRIM(currency)),'@','a') END currency,
+					exchange_rate,
+					created_at,
+					updated_at,
+					batch_id = @batch_id
+				FROM bronze.payments
+
+
+				
+		END
+		ELSE 
+			BEGIN
+
+				INSERT INTO silver.payments(
+										payment_id,
+										order_id,
+										amount,
+										payment_method,
+										payment_gateway ,
+										payment_status,
+										currency,
+										exchange_rate,
+										created_at,
+										updated_at,
+										batch_id 
+											   )
+
+
+
+				SELECT 
+					payment_id,
+					order_id,
+					amount,
+					CASE WHEN
+						payment_method  IS NULL THEN 'N/A'
+					ELSE REPLACE(LOWER(TRIM(payment_method)),'@','a') END payment_method,
+					CASE WHEN
+						payment_gateway  IS NULL THEN 'N/A'
+					ELSE REPLACE(LOWER(TRIM(payment_gateway)),'@','a') END payment_gateway,
+					CASE WHEN
+						payment_status  IS NULL THEN 'N/A'
+					ELSE REPLACE(LOWER(TRIM(payment_status)),'@','a') END payment_status,
+					CASE WHEN
+						currency  IS NULL THEN 'N/A'
+					ELSE REPLACE(UPPER(TRIM(currency)),'@','a') END currency,
+					exchange_rate,
+					created_at,
+					updated_at,
+					batch_id = @batch_id
+				FROM bronze.payments
+				WHERE TRY_CAST (updated_at AS DATETIME) > @last_ingestion_datetime ;
+				
+			END
+			-- Update control table for this table
+				UPDATE silver.control_table
+				SET last_ingestion_datetime = GETDATE(),
+					last_batch_id = @batch_id
+				WHERE table_name = 'payments';
+
+
+	SELECT  @last_ingestion_datetime = last_ingestion_datetime 
+	FROM silver.control_table
+	WHERE table_name = 'order_items';
+	IF @last_ingestion_datetime <= '2000-01-01'
+	
+		BEGIN
+	
+			INSERT INTO silver.order_items(
+										order_item_id ,
+										order_id,
+										product_id ,
+										quantity,
+										unit_price ,
+										tax,
+									    discount_amount ,
+									    fulfilled_by,    
+									    created_at ,
+									    updated_at ,
+									    batch_id 
+											   )
+
+
+
+				SELECT 
+					order_item_id,
+					order_id,
+					product_id,
+					quantity,
+					unit_price,
+					tax,
+					discount_amount,
+					CASE WHEN
+							fulfilled_by  IS NULL THEN 'N/A'
+					ELSE REPLACE(LOWER(TRIM(fulfilled_by)),'@','a') END fulfilled_by,
+					created_at,
+					updated_at,
+					batch_id = @batch_id
+				FROM bronze.order_items
+
+
+				
+		END
+		ELSE 
+			BEGIN
+
+				INSERT INTO silver.order_items(
+										order_item_id ,
+										order_id,
+										product_id ,
+										quantity,
+										unit_price ,
+										tax,
+									    discount_amount ,
+									    fulfilled_by,    
+									    created_at ,
+									    updated_at ,
+									    batch_id 
+											   )
+
+
+
+				SELECT 
+					order_item_id,
+					order_id,
+					product_id,
+					quantity,
+					unit_price,
+					tax,
+					discount_amount,
+					CASE WHEN
+							fulfilled_by  IS NULL THEN 'N/A'
+					ELSE REPLACE(LOWER(TRIM(fulfilled_by)),'@','a') END fulfilled_by,
+					created_at,
+					updated_at,
+					batch_id = @batch_id
+				FROM bronze.order_items
+				WHERE TRY_CAST (updated_at AS DATETIME) > @last_ingestion_datetime ;
+				
+			END
+			-- Update control table for this table
+				UPDATE silver.control_table
+				SET last_ingestion_datetime = GETDATE(),
+					last_batch_id = @batch_id
+				WHERE table_name = 'order_items';
+
+
 END
 GO
-
-
-
 
