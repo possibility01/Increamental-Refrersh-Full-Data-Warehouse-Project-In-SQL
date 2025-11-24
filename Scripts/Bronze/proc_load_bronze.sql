@@ -145,7 +145,7 @@ BEGIN
         SET @END_TIME_CONTROL_TABLE = GETDATE();
 
         PRINT '----------------------------------------------------------------';
-        PRINT 'Control Table already exists. No changes made.';
+        PRINT 'Bronze Control Table already exists. No changes made.';
         PRINT 'Total Duration Checked: ' + CAST(DATEDIFF(SECOND,@START_TIME_CONTROL_TABLE,@END_TIME_CONTROL_TABLE) AS NVARCHAR) + ' seconds';
         PRINT '================================================================';
     END

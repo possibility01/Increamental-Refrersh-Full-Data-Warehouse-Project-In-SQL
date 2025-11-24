@@ -104,13 +104,13 @@ C00102,FIRSTNAME71,LastName132,user102@ex@mple.com,,MALE,Lagos,64,Low,,REGULAR,t
 C00103,FirstNam373,LastName286,user103@example.com,8076524658,Male,,,Medium,5,returning,Mobile,M@rried,2024-02-19 05:54:45,2024-09-12 12:59:41,1
 C00104,FirstName254,LastName225,USER104@EXAMPLE.COM,,,lagos,20,High,19,Returning,DESKTOP,,2024-09-20 03:50:33,2024-08-06 13:41:10,1
 C00105,F1rstName265,L@stN@me222,user105@example.com,8027118196,Male,lagos,,High,,Regular,tablet,,2024-07-09 09:17:04,2024-10-29 05:57:08,0
-C00106,FirstName126,LastName19,user106@example.com,8020035745,FEMALE,Abuja,,High,34,new,TABLET,,2024-09-05 02:00:35,2024-09-05 02:00:35,1
+C00106,FirstName126,LastName19,user106@example.com,8020035745,FEMALE,Abuja,,High,34,new,TABLET,,2024-09-05 02:00:35,2024-10-29 05:57:08,1
 C00107,FirstN@me126,LastName183,user107@example.com,,Male,enugu,31,Medium,,New,mobile,Single,2024-08-01 17:59:32,2024-04-08 08:25:06,1
 C00108,FirstName107,LastName158,,8075194077,Male,kano,,High,93,Regular,Desktop,Single,2024-03-25 19:38:31,2024-11-29 18:59:03,0
-C00109,FirstName174,LASTNAME82,user109@example.com,,Female,,,Medium,95,vip,desktop,,2024-06-18 02:52:04,2024-01-14 11:42:08,0
+C00109,FirstName174,LASTNAME82fghjhjj,user109@example.com,,Female,,,Medium,95,vip,desktop,,2024-06-18 02:52:04,2024-01-14 11:42:08,0
 C00110,F1rstName55,LastName8,,N/A,Female,Ib@d@n,,High,,VIP,Desktop,M@rried,2024-03-18 01:09:55,2024-06-04 00:48:16,1
 C00111,FIRSTNAME128,LastName277,user111@example.com,,MALE,IBADAN,,,7,,tablet,single,2024-01-10 15:18:03,2024-12-02 01:17:52,0
-C00112,FirstName230,lastname120,USER112@EXAMPLE.COM,8012915753,Fem@le,KANO,,Low,,Returning,T@blet,MARRIED,2024-12-31 01:42:05,2024-11-29 21:06:15,0
+C00112,FirstName230,lastname120,USER112@EXAMPLE.COM,8012915753,Fem@le,KANOccc,,Low,,Returning,T@blet,MARRIED,2024-12-31 01:42:05,2024-05-04 12:19:03,0
 C00113,FirstName7,LastName275,user113@example.com,,female,Lagos,,Low,,VIP,Mobile,,2024-01-04 07:07:30,2024-05-04 12:19:03,0
 C00114,FirstName82,LASTNAME212,user114@example.com,8056465619,Female,Ib@d@n,,High,,new,Desktop,Single,2024-09-20 20:03:32,2024-09-20 20:03:32,0
 C00115,FIRSTNAME276,LastName232,user115@example.com,,FEMALE,Ibadan,31,Medium,83,New,,Married,2024-10-23 05:16:21,2024-10-31 22:09:43,0
@@ -4999,3 +4999,7 @@ C04997,FirstNam359,LastName279,,,Male,KANO,,Low,,New,Mobile,,2024-01-18 14:14:10
 C04998,F1rstName172,LASTNAME287,user4998@example.com,,female,L@gos,,Medium,,,Desktop,Married,2024-11-16 18:07:28,2024-12-08 21:47:07,0
 C04999,FirstName240,LastName266,user4999@example.com,,Male,,,Medium,,returning,Tablet,,2024-07-26 15:31:36,2024-01-20 08:33:04,0
 C05000,FIRSTNAME5,LastName182,user5000@ex@mple.com,,Female,Kano,,,,,Desktop,Married,2024-05-02 11:31:45,2024-10-08 20:28:46,1
+C04997f,FirstNam359,LastName279,,,Male,KANO,,Low,,New,Mobile,,2024-01-18 14:14:10,2025/11/24 22:00:35,1
+C04998f,F1rstName172,LASTNAME287,user4998@example.com,,female,L@gos,,Medium,,,Desktop,Married,2024-11-16 18:07:28,2025/11/24 22:00:35,0
+C04999gg,FirstName240,LastName266,user4999@example.com,,Male,,,Medium,,returning,Tablet,,2024-07-26 15:31:36,2025/11/24 22:00:35,0
+C05000gg,FIRSTNAME5,LastName182,user5000@ex@mple.com,,Female,Kano,,,,,Desktop,Married,2024-05-02 11:31:45,2025/11/24 22:00:35,1
