@@ -496,6 +496,97 @@ BEGIN
 				WHERE table_name = 'order_items';
 
 
+SELECT  @last_ingestion_datetime = last_ingestion_datetime 
+	FROM silver.control_table
+	WHERE table_name = 'orders';
+	IF @last_ingestion_datetime <= '2000-01-01'
+	
+		BEGIN
+	
+			INSERT INTO silver.orders(
+										payment_id,
+										order_id,
+										amount,
+										payment_method,
+										payment_gateway ,
+										payment_status,
+										currency,
+										exchange_rate,
+										created_at,
+										updated_at,
+										batch_id 
+																   )
+					SELECT 
+						order_id,
+						customer_id,
+						CASE WHEN
+								order_status  IS NULL THEN 'N/A'
+						ELSE REPLACE(LOWER(TRIM(order_status)),'@','a') END order_status,
+						CASE WHEN
+								shipping_method  IS NULL THEN 'N/A'
+						ELSE REPLACE(LOWER(TRIM(shipping_method)),'@','a') END shipping_method,
+						CASE WHEN
+								payment_terms  IS NULL THEN 'N/A'
+						ELSE REPLACE(LOWER(TRIM(payment_terms)),'@','a') END payment_terms,
+						shipping_fee,
+						created_at,
+						updated_at,
+						is_deleted,
+						batch_id = @batch_id
+
+					FROM bronze.orders
+
+
+				
+		END
+		ELSE 
+			BEGIN
+
+				INSERT INTO silver.orders(
+											order_id,
+											customer_id,
+											order_status,
+											shipping_method,
+											payment_terms,
+											shipping_fee,
+											created_at,
+											updated_at ,
+											is_deleted,
+											batch_id 
+											   )
+				SELECT 
+					order_id,
+					customer_id,
+					CASE WHEN
+							order_status  IS NULL THEN 'N/A'
+					ELSE REPLACE(LOWER(TRIM(order_status)),'@','a') END order_status,
+					CASE WHEN
+							shipping_method  IS NULL THEN 'N/A'
+					ELSE REPLACE(LOWER(TRIM(shipping_method)),'@','a') END shipping_method,
+					CASE WHEN
+							payment_terms  IS NULL THEN 'N/A'
+					ELSE REPLACE(LOWER(TRIM(payment_terms)),'@','a') END payment_terms,
+					shipping_fee,
+					created_at,
+					updated_at,
+					is_deleted,
+					batch_id = @batch_id
+
+				FROM bronze.orders
+				WHERE TRY_CAST (updated_at AS DATETIME) > @last_ingestion_datetime ;
+				
+			END
+			-- Update control table for this table
+				UPDATE silver.control_table
+				SET last_ingestion_datetime = GETDATE(),
+					last_batch_id = @batch_id
+				WHERE table_name = 'orders';
+
+
+
 END
 GO
+
+
+
 
