@@ -13,7 +13,7 @@ SQL Server Stored Procedures for Silver Layer Incremental Loading
    - Initial tables added to control table: customers, products, orders, payments, order_items
    - Default last_ingestion_datetime is set to '2000-01-01' and last_batch_id to NULL.
    - If the control table already exists, no changes are made.
-
+   commit 
 2. Procedure: silver.inital_increamental_load
    - Purpose: Performs an initial or incremental load of data from the Bronze layer into the Silver layer.
    - Logic:
