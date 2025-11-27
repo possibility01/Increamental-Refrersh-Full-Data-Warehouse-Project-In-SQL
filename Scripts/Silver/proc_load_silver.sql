@@ -478,7 +478,9 @@ BEGIN
 					order_item_id,
 					order_id,
 					product_id,
-					quantity,
+					CASE 
+						WHEN quantity IS NULL OR quantity = 0 THEN 1
+					ELSE quantity END quantity,
 					unit_price,
 					tax,
 					discount_amount,
@@ -516,7 +518,9 @@ BEGIN
 					order_item_id,
 					order_id,
 					product_id,
-					quantity,
+					CASE 
+						WHEN quantity IS NULL OR quantity = 0 THEN 1
+					ELSE quantity END quantity,
 					unit_price,
 					tax,
 					discount_amount,
@@ -625,6 +629,10 @@ SELECT  @last_ingestion_datetime = last_ingestion_datetime
 
 END
 GO
+
+
+
+
 
 
 
