@@ -359,18 +359,49 @@ CREATE OR ALTER PROCEDURE bronze.inital_increamental_load AS
             ELSE
             BEGIN
             -- Incremental load based on last ingestion datetime
-                SET @Start_time_increamental_load_customer = GETDATE()
-                INSERT INTO bronze.customers (
-                    customer_id, first_name, last_name, email, phone, gender, city, 
-                    age, income_level, loyalty_score, segment, preferred_device, 
-                    marital_status, created_at, updated_at, is_deleted, batch_id
-                )
-                SELECT 
-                    customer_id, first_name, last_name, email, phone, gender, city, 
-                    age, income_level, loyalty_score, segment, preferred_device, 
-                    marital_status, created_at, updated_at, is_deleted, @batch_id
-                FROM bronze.staging_customers
-                WHERE TRY_CAST(updated_at AS DATETIME) > @last_ingestion;
+                SET @Start_time_increamental_load_customer = GETDATE();
+
+        MERGE bronze.customers AS tgt
+        USING (
+            SELECT 
+                *,
+                @batch_id AS batch_id
+            FROM bronze.staging_customers
+            WHERE TRY_CAST(updated_at AS DATETIME) > @last_ingestion
+        ) AS src
+        ON tgt.customer_id = src.customer_id
+        
+
+        WHEN MATCHED THEN
+            UPDATE SET
+                tgt.first_name       = src.first_name,
+                tgt.last_name        = src.last_name,
+                tgt.email            = src.email,
+                tgt.phone            = src.phone,
+                tgt.gender           = src.gender,
+                tgt.city             = src.city,
+                tgt.age              = src.age,
+                tgt.income_level     = src.income_level,
+                tgt.loyalty_score    = src.loyalty_score,
+                tgt.segment          = src.segment,
+                tgt.preferred_device = src.preferred_device,
+                tgt.marital_status   = src.marital_status,
+                tgt.created_at       = src.created_at,
+                tgt.updated_at       = src.updated_at,
+                tgt.is_deleted       = src.is_deleted,
+                tgt.batch_id         = src.batch_id
+
+        WHEN NOT MATCHED BY TARGET THEN
+            INSERT (
+                customer_id, first_name, last_name, email, phone, gender, city,
+                age, income_level, loyalty_score, segment, preferred_device,
+                marital_status, created_at, updated_at, is_deleted, batch_id
+            )
+            VALUES (
+                src.customer_id, src.first_name, src.last_name, src.email, src.phone, src.gender, src.city,
+                src.age, src.income_level, src.loyalty_score, src.segment, src.preferred_device,
+                src.marital_status, src.created_at, src.updated_at, src.is_deleted, src.batch_id
+            );
             SET @END_time_increamental_load_customer = GETDATE()
 
             PRINT'---------------------------------------------------------------------------------------------------------------------------------------------'
@@ -426,15 +457,39 @@ CREATE OR ALTER PROCEDURE bronze.inital_increamental_load AS
             ELSE
             BEGIN
                 SET @Start_time_increamental_load_product = GETDATE()
-                INSERT INTO bronze.products (
+
+                MERGE bronze.products  AS tgt
+                USING ( 
+                    SELECT *, @batch_id AS batch_id
+                    FROM bronze.staging_products
+                    WHERE TRY_CAST(updated_at AS DATETIME) > @last_ingestion ) AS src
+                    ON tgt.product_id = src.product_id
+
+                WHEN MATCHED THEN
+                        UPDATE SET
+                                tgt.product_name = src.product_name,
+                                tgt.category = src.category,
+                                tgt.brand = src.brand,
+                                tgt.price = src.price,
+                                tgt.discount =src.discount,
+                                tgt.rating = src.rating,
+                                tgt.stock = src.stock,
+                                tgt.weight_g = src.weight_g, 
+                                tgt.color = src.color, 
+                                tgt.created_at = tgt.created_at, 
+                                tgt.updated_at =  src.updated_at, 
+                                tgt.is_deleted = src.is_deleted, 
+                                tgt.batch_id = src.batch_id
+
+                WHEN NOT MATCHED BY TARGET THEN
+                            
+                INSERT  (
                     product_id, product_name, category, brand, price, discount, rating, stock,
                     weight_g, color, created_at, updated_at, is_deleted, batch_id
                 )
-                SELECT 
-                    product_id, product_name, category, brand, price, discount, rating, stock,
-                    weight_g, color, created_at, updated_at, is_deleted, @batch_id
-                FROM bronze.staging_products
-                WHERE TRY_CAST(updated_at AS DATETIME) > @last_ingestion;
+                VALUES (
+                    src.product_id, src.product_name, src.category, src.brand, src.price, src.discount, src.rating, src.stock,
+                    src.weight_g, src.color, src.created_at, src.updated_at, src.is_deleted, src.batch_id );
 
                 SET @END_time_increamental_load_product = GETDATE()
                 PRINT'---------------------------------------------------------------------------------------------------------------------------------------------'
@@ -484,15 +539,35 @@ CREATE OR ALTER PROCEDURE bronze.inital_increamental_load AS
             BEGIN
                 
                 SET @Start_time_increamental_load_order = GETDATE()
-                INSERT INTO bronze.orders (
+                MERGE bronze.orders AS tgt
+                        USING ( 
+                            SELECT *, @batch_id  AS batch_id
+                    FROM bronze.staging_orders
+                    WHERE TRY_CAST(updated_at AS DATETIME) > @last_ingestion ) AS src
+
+                    ON tgt.order_id  = src.order_id
+
+                WHEN MATCHED THEN 
+                       UPDATE SET 
+                                tgt.customer_id = src.customer_id,
+                                tgt.order_status = src.order_status,
+                                tgt.shipping_method = src.shipping_method,
+                                tgt.payment_terms = src.payment_terms,
+                                tgt.shipping_fee =src.shipping_fee,
+                                tgt.created_at = src.created_at,
+                                tgt.updated_at = src.updated_at,
+                                tgt.is_deleted = src.is_deleted, 
+                                tgt.batch_id = src.batch_id
+
+                WHEN NOT MATCHED BY TARGET THEN 
+                INSERT  (
                     order_id, customer_id, order_status, shipping_method, payment_terms,
                     shipping_fee, created_at, updated_at, is_deleted, batch_id
                 )
-                SELECT 
-                    order_id, customer_id, order_status, shipping_method, payment_terms,
-                    shipping_fee, created_at, updated_at, is_deleted, @batch_id
-                FROM bronze.staging_orders
-                WHERE TRY_CAST(updated_at AS DATETIME) > @last_ingestion;
+                VALUES ( 
+                    src.order_id, src.customer_id, src.order_status, src.shipping_method, src.payment_terms,
+                    src.shipping_fee, src.created_at, src.updated_at, src.is_deleted, src.batch_id );
+                
 
                 SET @END_time_increamental_load_order = GETDATE()
                 PRINT'---------------------------------------------------------------------------------------------------------------------------------------------'
@@ -541,15 +616,36 @@ CREATE OR ALTER PROCEDURE bronze.inital_increamental_load AS
             ELSE
             BEGIN
                 SET @Start_time_increamental_order_items = GETDATE()
-                INSERT INTO bronze.order_items (
-                    order_item_id, order_id, product_id, quantity, unit_price, tax,
-                    discount_amount, fulfilled_by, created_at, updated_at, batch_id
-                )
-                SELECT 
-                    order_item_id, order_id, product_id, quantity, unit_price, tax,
-                    discount_amount, fulfilled_by, created_at, updated_at, @batch_id
-                FROM bronze.staging_order_items
-                WHERE TRY_CAST(updated_at AS DATETIME) > @last_ingestion;
+                MERGE bronze.order_items AS tgt
+                    USING (
+                            SELECT *, @batch_id AS batch_id
+                    FROM bronze.staging_order_items
+                    WHERE TRY_CAST(updated_at AS DATETIME) > @last_ingestion ) AS src
+
+                    ON tgt.order_item_id  = src.order_item_id
+
+                WHEN MATCHED THEN 
+                       UPDATE SET 
+                                tgt.order_id = src.order_id,
+                                tgt.product_id = src.product_id,
+                                tgt.quantity = src.quantity,
+                                tgt.unit_price = src.unit_price,
+                                tgt.tax =src.tax,
+                                tgt.discount_amount = src.discount_amount,
+                                tgt.fulfilled_by = src.fulfilled_by,
+                                tgt.created_at = src.created_at,
+                                tgt.updated_at = src.updated_at, 
+                                tgt.batch_id = src.batch_id
+
+            WHEN NOT MATCHED BY TARGET THEN 
+                                INSERT  (
+                                    order_item_id, order_id, product_id, quantity, unit_price, tax,
+                                    discount_amount, fulfilled_by, created_at, updated_at, batch_id
+                                )
+                                VALUES (
+                                    src.order_item_id, src.order_id, src.product_id, src.quantity, src.unit_price, src.tax,
+                                    src.discount_amount, src.fulfilled_by, src.created_at, src.updated_at, src.batch_id );
+                                
 
                 SET @END_time_increamental_order_items = GETDATE()
 
@@ -600,16 +696,39 @@ CREATE OR ALTER PROCEDURE bronze.inital_increamental_load AS
             BEGIN
 
                 SET @Start_time_increamental_load_payment = GETDATE()
-                INSERT INTO bronze.payments (
-                    payment_id, order_id, amount, payment_method, payment_gateway,
-                    payment_status, currency, exchange_rate, created_at, updated_at, batch_id
-                )
-                SELECT 
-                    payment_id, order_id, amount, payment_method, payment_gateway,
-                    payment_status, currency, exchange_rate, created_at, updated_at, @batch_id
-                FROM bronze.staging_payments
-                WHERE TRY_CAST(updated_at AS DATETIME) > @last_ingestion;   
+                MERGE bronze.payments AS tgt 
+                        USING  (  
+                                SELECT *, @batch_id AS batch_id 
+                    FROM bronze.staging_payments
+                    WHERE TRY_CAST(updated_at AS DATETIME) > @last_ingestion) AS src
 
+                    ON tgt.payment_id = src.payment_id
+
+                WHEN MATCHED THEN 
+                       UPDATE SET 
+                                tgt.payment_id = src.payment_id,
+                                tgt.order_id = src.order_id,
+                                tgt.amount = src.amount,
+                                tgt.payment_method = src.payment_method,
+                                tgt.payment_gateway =src.payment_gateway,
+                                tgt.currency = src.currency,
+                                tgt.payment_status = src.payment_status,
+                                tgt.exchange_rate = src.exchange_rate,
+                                tgt.created_at = src.created_at,
+                                tgt.updated_at = src.updated_at, 
+                                tgt.batch_id = src.batch_id
+
+               WHEN NOT MATCHED BY TARGET THEN 
+
+
+                                INSERT (
+                                    payment_id, order_id, amount, payment_method, payment_gateway,
+                                    payment_status, currency, exchange_rate, created_at, updated_at, batch_id
+                                )
+                                VALUES 
+                                   ( payment_id, order_id, amount, payment_method, payment_gateway,
+                                    payment_status, currency, exchange_rate, created_at, updated_at, batch_id);
+                                
 
 
                 SET @END_time_increamental_load_payment = GETDATE()
@@ -630,15 +749,15 @@ CREATE OR ALTER PROCEDURE bronze.inital_increamental_load AS
             TRUNCATE TABLE bronze.staging_payments;
 
             COMMIT TRANSACTION;
-        END TRY
-        BEGIN CATCH
-            IF XACT_STATE() <> 0
-                ROLLBACK TRANSACTION;
+       END TRY
 
-            DECLARE @ErrMsg NVARCHAR(4000) = ERROR_MESSAGE();
-            RAISERROR('Error during Bronze ETL: %s', 16, 1, @ErrMsg);
-        END CATCH;
+    BEGIN CATCH
+        ROLLBACK TRANSACTION;
+
+        PRINT '*************** ERROR OCCURRED ***************';
+        PRINT ERROR_MESSAGE();
+        PRINT '**********************************************';
+ END CATCH;
+
     
-
-  
 
