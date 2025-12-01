@@ -29,8 +29,7 @@ CREATE TABLE bronze.staging_products (
                       weight_g INT,
                       color NVARCHAR (50),
                       created_at DATETIME
-                      ,updated_at DATETIME,
-                      is_deleted INT
+                      ,updated_at DATETIME
                       );
 GO
 
@@ -53,7 +52,6 @@ CREATE TABLE bronze.products (
                       color NVARCHAR (50),
                       created_at DATETIME
                       ,updated_at DATETIME,
-                      is_deleted INT,
                       batch_id NVARCHAR(50)
                       );
 GO
@@ -105,8 +103,7 @@ CREATE TABLE bronze.staging_orders (
                             payment_terms	NVARCHAR(50),
                             shipping_fee FLOAT,
                             created_at DATETIME,
-                            updated_at DATETIME,
-                            is_deleted INT
+                            updated_at DATETIME
                       );
 GO
 
@@ -122,7 +119,6 @@ CREATE TABLE bronze.orders (
                             shipping_fee FLOAT,
                             created_at DATETIME,
                             updated_at DATETIME,
-                            is_deleted INT,
                             batch_id NVARCHAR(50)
                       );
 GO
@@ -182,8 +178,7 @@ CREATE TABLE bronze.staging_customers (
                                preferred_device NVARCHAR(50),
                                marital_status NVARCHAR(50),
                                created_at DATETIME,
-                               updated_at DATETIME,
-                               is_deleted INT
+                               updated_at DATETIME
                                
                       );
 
@@ -208,7 +203,6 @@ CREATE TABLE bronze.customers (
                                marital_status NVARCHAR(50),
                                created_at DATETIME,
                                updated_at DATETIME,
-                               is_deleted INT,
                                batch_id NVARCHAR(50)
                                
                       );

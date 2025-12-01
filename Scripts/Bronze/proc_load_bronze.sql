@@ -98,7 +98,6 @@ Notes:
 */
 
 
-
 USE DataWarehouse;
 GO
 
@@ -151,7 +150,6 @@ BEGIN
     END
 END
 GO
-
 
 /*
 ===========================================================================================
@@ -340,12 +338,12 @@ CREATE OR ALTER PROCEDURE bronze.inital_increamental_load AS
                 INSERT INTO bronze.customers (
                     customer_id, first_name, last_name, email, phone, gender, city, 
                     age, income_level, loyalty_score, segment, preferred_device, 
-                    marital_status, created_at, updated_at, is_deleted, batch_id
+                    marital_status, created_at, updated_at, batch_id
                 )
                 SELECT 
                     customer_id, first_name, last_name, email, phone, gender, city, 
                     age, income_level, loyalty_score, segment, preferred_device, 
-                    marital_status, created_at, updated_at, is_deleted, @batch_id
+                    marital_status, created_at, updated_at, @batch_id
                 FROM bronze.staging_customers;
 
 
@@ -388,19 +386,18 @@ CREATE OR ALTER PROCEDURE bronze.inital_increamental_load AS
                 tgt.marital_status   = src.marital_status,
                 tgt.created_at       = src.created_at,
                 tgt.updated_at       = src.updated_at,
-                tgt.is_deleted       = src.is_deleted,
                 tgt.batch_id         = src.batch_id
 
         WHEN NOT MATCHED BY TARGET THEN
             INSERT (
                 customer_id, first_name, last_name, email, phone, gender, city,
                 age, income_level, loyalty_score, segment, preferred_device,
-                marital_status, created_at, updated_at, is_deleted, batch_id
+                marital_status, created_at, updated_at, batch_id
             )
             VALUES (
                 src.customer_id, src.first_name, src.last_name, src.email, src.phone, src.gender, src.city,
                 src.age, src.income_level, src.loyalty_score, src.segment, src.preferred_device,
-                src.marital_status, src.created_at, src.updated_at, src.is_deleted, src.batch_id
+                src.marital_status, src.created_at, src.updated_at, src.batch_id
             );
             SET @END_time_increamental_load_customer = GETDATE()
 
@@ -440,11 +437,11 @@ CREATE OR ALTER PROCEDURE bronze.inital_increamental_load AS
 
                 INSERT INTO bronze.products (
                     product_id, product_name, category, brand, price, discount, rating, stock,
-                    weight_g, color, created_at, updated_at, is_deleted, batch_id
+                    weight_g, color, created_at, updated_at, batch_id
                 )
                 SELECT 
                     product_id, product_name, category, brand, price, discount, rating, stock,
-                    weight_g, color, created_at, updated_at, is_deleted, @batch_id
+                    weight_g, color, created_at, updated_at, @batch_id
                 FROM bronze.staging_products;
 
                 SET @END_time_intial_load_product = GETDATE()
@@ -478,18 +475,17 @@ CREATE OR ALTER PROCEDURE bronze.inital_increamental_load AS
                                 tgt.color = src.color, 
                                 tgt.created_at = tgt.created_at, 
                                 tgt.updated_at =  src.updated_at, 
-                                tgt.is_deleted = src.is_deleted, 
                                 tgt.batch_id = src.batch_id
 
                 WHEN NOT MATCHED BY TARGET THEN
                             
                 INSERT  (
                     product_id, product_name, category, brand, price, discount, rating, stock,
-                    weight_g, color, created_at, updated_at, is_deleted, batch_id
+                    weight_g, color, created_at, updated_at, batch_id
                 )
                 VALUES (
                     src.product_id, src.product_name, src.category, src.brand, src.price, src.discount, src.rating, src.stock,
-                    src.weight_g, src.color, src.created_at, src.updated_at, src.is_deleted, src.batch_id );
+                    src.weight_g, src.color, src.created_at, src.updated_at,  src.batch_id );
 
                 SET @END_time_increamental_load_product = GETDATE()
                 PRINT'---------------------------------------------------------------------------------------------------------------------------------------------'
@@ -520,11 +516,11 @@ CREATE OR ALTER PROCEDURE bronze.inital_increamental_load AS
 
                 INSERT INTO bronze.orders (
                     order_id, customer_id, order_status, shipping_method, payment_terms,
-                    shipping_fee, created_at, updated_at, is_deleted, batch_id
+                    shipping_fee, created_at, updated_at, batch_id
                 )
                 SELECT 
                     order_id, customer_id, order_status, shipping_method, payment_terms,
-                    shipping_fee, created_at, updated_at, is_deleted, @batch_id
+                    shipping_fee, created_at, updated_at, @batch_id
                 FROM bronze.staging_orders;
 
                 SET @END_time_intial_load_order =GETDATE()
@@ -556,17 +552,16 @@ CREATE OR ALTER PROCEDURE bronze.inital_increamental_load AS
                                 tgt.shipping_fee =src.shipping_fee,
                                 tgt.created_at = src.created_at,
                                 tgt.updated_at = src.updated_at,
-                                tgt.is_deleted = src.is_deleted, 
                                 tgt.batch_id = src.batch_id
 
                 WHEN NOT MATCHED BY TARGET THEN 
                 INSERT  (
                     order_id, customer_id, order_status, shipping_method, payment_terms,
-                    shipping_fee, created_at, updated_at, is_deleted, batch_id
+                    shipping_fee, created_at, updated_at, batch_id
                 )
                 VALUES ( 
                     src.order_id, src.customer_id, src.order_status, src.shipping_method, src.payment_terms,
-                    src.shipping_fee, src.created_at, src.updated_at, src.is_deleted, src.batch_id );
+                    src.shipping_fee, src.created_at, src.updated_at, src.batch_id );
                 
 
                 SET @END_time_increamental_load_order = GETDATE()
@@ -758,6 +753,9 @@ CREATE OR ALTER PROCEDURE bronze.inital_increamental_load AS
         PRINT ERROR_MESSAGE();
         PRINT '**********************************************';
  END CATCH;
+
+
+
 
     
 
