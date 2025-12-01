@@ -30,7 +30,6 @@ CREATE TABLE silver.customers (
                                marital_status NVARCHAR(50),
                                created_at DATETIME,
                                updated_at DATETIME,
-                               is_deleted INT,
                                batch_id NVARCHAR(50),
                                dwh_created_date DATETIME DEFAULT GETDATE()
                                
@@ -52,7 +51,6 @@ CREATE TABLE silver.products (
                       color NVARCHAR (50),
                       created_at DATETIME
                       ,updated_at DATETIME,
-                      is_deleted INT,
                       batch_id NVARCHAR(50),
                       dwh_created_date DATETIME DEFAULT GETDATE()
                       );
@@ -69,7 +67,6 @@ CREATE TABLE silver.orders (
                             shipping_fee FLOAT,
                             created_at DATETIME,
                             updated_at DATETIME,
-                            is_deleted INT ,
                             batch_id NVARCHAR(50),
                             dwh_created_date DATETIME DEFAULT GETDATE()
                             );

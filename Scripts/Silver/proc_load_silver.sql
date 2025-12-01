@@ -39,7 +39,6 @@ Notes:
 - Batch processing allows for auditing and traceability of ETL jobs.
 ================================================================================
 */
-
 USE DataWarehouse;
 GO
 
@@ -71,7 +70,6 @@ END
 GO
 
 
-
 CREATE OR ALTER PROCEDURE  silver.inital_increamental_load AS
 BEGIN
 	DECLARE  @batch_id NVARCHAR(50)= FORMAT(GETDATE(), 'yyyyMMdd_HHmm'),@last_ingestion_datetime DATETIME;
@@ -100,7 +98,7 @@ BEGIN
 											   marital_status ,
 											   created_at,
 											   updated_at ,
-											   is_deleted,
+											   
 											   batch_id
 											   )
 
@@ -149,11 +147,9 @@ BEGIN
 					ELSE REPLACE(TRIM(LOWER(marital_status)),'@','a') END marital_status,
 					created_at,
 					updated_at,
-					is_deleted,
+					
 					batch_id = @batch_id
 	
-
-
 
 				FROM bronze.customers
 		END
@@ -176,7 +172,7 @@ BEGIN
 											   marital_status ,
 											   created_at,
 											   updated_at ,
-											   is_deleted,
+											   
 											   batch_id
 											   )
 
@@ -225,7 +221,7 @@ BEGIN
 					ELSE REPLACE(TRIM(LOWER(marital_status)),'@','a') END marital_status,
 					created_at,
 					updated_at,
-					is_deleted,
+					
 					batch_id = @batch_id
 	
 				FROM bronze.customers
@@ -260,7 +256,7 @@ BEGIN
 										  color,
 										  created_at
 										  ,updated_at,
-										  is_deleted,
+										  
 										  batch_id
 											   )
 
@@ -287,7 +283,7 @@ BEGIN
 					ELSE REPLACE(LOWER(TRIM(color)),'@','a') END color,
 					created_at,
 					updated_at,
-					is_deleted,
+					
 					batch_id = @batch_id
 
 
@@ -309,7 +305,7 @@ BEGIN
 										  color,
 										  created_at
 										  ,updated_at,
-										  is_deleted,
+										
 										  batch_id
 											   )
 
@@ -337,7 +333,7 @@ BEGIN
 					ELSE REPLACE(LOWER(TRIM(color)),'@','a') END color,
 					created_at,
 					updated_at,
-					is_deleted,
+					
 					batch_id = @batch_id
 
 
@@ -557,7 +553,7 @@ SELECT  @last_ingestion_datetime = last_ingestion_datetime
 											shipping_fee,
 											created_at,
 											updated_at ,
-											is_deleted,
+											
 											batch_id 
 																   )
 					SELECT 
@@ -575,7 +571,7 @@ SELECT  @last_ingestion_datetime = last_ingestion_datetime
 						shipping_fee,
 						created_at,
 						updated_at,
-						is_deleted,
+						
 						batch_id = @batch_id
 
 					FROM bronze.orders
@@ -595,7 +591,7 @@ SELECT  @last_ingestion_datetime = last_ingestion_datetime
 											shipping_fee,
 											created_at,
 											updated_at ,
-											is_deleted,
+											
 											batch_id 
 											   )
 				SELECT 
@@ -613,7 +609,7 @@ SELECT  @last_ingestion_datetime = last_ingestion_datetime
 					shipping_fee,
 					created_at,
 					updated_at,
-					is_deleted,
+					
 					batch_id = @batch_id
 
 				FROM bronze.orders
@@ -629,7 +625,6 @@ SELECT  @last_ingestion_datetime = last_ingestion_datetime
 
 END
 GO
-
 
 
 
