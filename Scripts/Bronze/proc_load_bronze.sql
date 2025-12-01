@@ -473,7 +473,7 @@ CREATE OR ALTER PROCEDURE bronze.inital_increamental_load AS
                                 tgt.stock = src.stock,
                                 tgt.weight_g = src.weight_g, 
                                 tgt.color = src.color, 
-                                tgt.created_at = tgt.created_at, 
+                                tgt.created_at = src.created_at, 
                                 tgt.updated_at =  src.updated_at, 
                                 tgt.batch_id = src.batch_id
 
@@ -746,13 +746,13 @@ CREATE OR ALTER PROCEDURE bronze.inital_increamental_load AS
             COMMIT TRANSACTION;
        END TRY
 
-    BEGIN CATCH
+BEGIN CATCH
         ROLLBACK TRANSACTION;
 
         PRINT '*************** ERROR OCCURRED ***************';
         PRINT ERROR_MESSAGE();
         PRINT '**********************************************';
- END CATCH;
+END CATCH;
 
 
 

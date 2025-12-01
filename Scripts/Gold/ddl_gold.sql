@@ -162,7 +162,7 @@ WITH sales AS (
         i.tax,
         i.discount_amount,
         (i.unit_price * i.quantity) 
-            + (o.shipping_fee + i.tax) 
+            +  i.tax) 
             - i.discount_amount AS order_amount
     FROM silver.orders o 
    LEFT JOIN silver.order_items i 
