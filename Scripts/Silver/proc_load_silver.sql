@@ -70,565 +70,359 @@ END
 GO
 
 
-CREATE OR ALTER PROCEDURE  silver.inital_increamental_load AS
+CREATE OR ALTER PROCEDURE  silver.inital_incremental_load AS
 BEGIN
 	DECLARE  @batch_id NVARCHAR(50)= FORMAT(GETDATE(), 'yyyyMMdd_HHmm'),@last_ingestion_datetime DATETIME;
 
-	SELECT  @last_ingestion_datetime = last_ingestion_datetime 
+	SELECT  @last_ingestion_datetime  =  last_ingestion_datetime 
 	FROM silver.control_table
 	WHERE table_name = 'customers';
 
-	IF @last_ingestion_datetime <= '2000-01-01'
+	MERGE silver.customers AS tar
+		USING (
+			SELECT * FROM bronze.customers
+			WHERE TRY_CAST(updated_at AS DATETIME) > @last_ingestion_datetime
+           OR @last_ingestion_datetime <= '2000-01-01'  -- for initial load
+				) AS src 
+		ON tar.customer_id = src.customer_id
+
+		WHEN MATCHED THEN 
+			   UPDATE SET 
+						tar.first_name = REPLACE(LOWER(TRIM(SUBSTRING(src.first_name,1,5))), '1', 'i') +
+                                REPLACE(LOWER(TRIM(SUBSTRING(src.first_name,6,LEN(src.first_name)))), '@', 'a'),
+            tar.last_name = REPLACE(LOWER(TRIM(src.last_name)), '@', 'a'),
+            tar.email = CASE
+                                WHEN src.email IS NULL THEN 'N/A'
+                                ELSE LEFT(LOWER(src.email), CHARINDEX('@', src.email) - 1) 
+                                     + '@' +
+                                     REPLACE(SUBSTRING(LOWER(src.email), CHARINDEX('@', src.email) + 1, LEN(src.email)), '@', '')
+                            END,
+            tar.phone = CASE 
+						WHEN src.phone IS NULL THEN 'N/A'
+					ELSE src.phone END ,
+            tar.gender = CASE 
+						WHEN src.gender IS NULL THEN 'N/A'
+					ELSE REPLACE(TRIM(LOWER(src.gender)),'@','a') END ,
+            tar.city = CASE 
+						WHEN src.city IS NULL THEN 'N/A'
+					ELSE REPLACE(TRIM(LOWER(src.city)),'@','a') END,
+            tar.age = CASE 
+						WHEN src.age IS NULL THEN 0
+					ELSE (src.age) END,
+            tar.income_level = CASE 
+						WHEN src.income_level IS NULL THEN 'N/A'
+					ELSE (TRIM(LOWER(src.income_level))) END,
+            tar.loyalty_score = CASE 
+						WHEN src.loyalty_score IS NULL THEN 0
+					ELSE (src.loyalty_score) END,
+            tar.segment = CASE 
+						WHEN src.segment IS NULL THEN 'N/A'
+					ELSE REPLACE(TRIM(LOWER(src.segment)),'@','a') END,
+            tar.preferred_device = CASE 
+						WHEN src.segment IS NULL THEN 'N/A'
+					ELSE REPLACE(TRIM(LOWER(src.segment)),'@','a') END,
+            tar.marital_status = CASE 
+						WHEN src.marital_status IS NULL THEN 'N/A'
+					ELSE REPLACE(TRIM(LOWER(src.marital_status)),'@','a') END,
+            tar.created_at = src.created_at,
+            tar.updated_at = src.updated_at,
+            tar.batch_id = @batch_id
 	
-		BEGIN
-	
-			INSERT INTO silver.customers (
-											   customer_id	,
-											   first_name ,
-											   last_name ,
-											   email ,
-											   phone ,	
-											   gender	,
-											   city	,                          
-											   age,
-											   income_level	,
-											   loyalty_score ,
-											   segment,
-											   preferred_device,
-											   marital_status ,
-											   created_at,
-											   updated_at ,
-											   
-											   batch_id
-											   )
+	WHEN NOT MATCHED BY TARGET THEN
+			INSERT (customer_id, first_name, last_name, email, phone, gender, city, age, income_level,
+					loyalty_score, segment, preferred_device, marital_status, created_at, updated_at, batch_id)
+			VALUES (
+				src.customer_id,
+				REPLACE(LOWER(TRIM(SUBSTRING(src.first_name,1,5))), '1', 'i') +
+				REPLACE(LOWER(TRIM(SUBSTRING(src.first_name,6,LEN(src.first_name)))), '@', 'a'),
+				REPLACE(LOWER(TRIM(src.last_name)), '@', 'a'),
+				CASE
+					WHEN src.email IS NULL THEN 'N/A'
+					ELSE LEFT(LOWER(src.email), CHARINDEX('@', src.email) - 1) 
+						 + '@' +
+						 REPLACE(SUBSTRING(LOWER(src.email), CHARINDEX('@', src.email) + 1, LEN(src.email)), '@', '')
+				END,
+				CASE 
+						WHEN src.phone IS NULL THEN 'N/A'
+					ELSE src.phone END,
+				CASE 
+						WHEN src.gender IS NULL THEN 'N/A'
+					ELSE REPLACE(TRIM(LOWER(src.gender)),'@','a') END,
+				CASE 
+						WHEN src.city IS NULL THEN 'N/A'
+					ELSE REPLACE(TRIM(LOWER(src.city)),'@','a') END,
+				src.age,
+				CASE 
+						WHEN src.income_level IS NULL THEN 'N/A'
+					ELSE (TRIM(LOWER(src.income_level))) END,
+				loyalty_score,
+				CASE 
+						WHEN src.segment IS NULL THEN 'N/A'
+					ELSE REPLACE(TRIM(LOWER(src.segment)),'@','a') END,
+				CASE 
+						WHEN src.segment IS NULL THEN 'N/A'
+					ELSE REPLACE(TRIM(LOWER(src.segment)),'@','a') END,
+				CASE 
+						WHEN src.marital_status IS NULL THEN 'N/A'
+					ELSE REPLACE(TRIM(LOWER(src.marital_status)),'@','a') END,
+				src.created_at,
+				src.updated_at,
+				@batch_id
+			);
 
+		-- Update control table
+		UPDATE silver.control_table
+		SET last_ingestion_datetime = GETDATE(),
+			last_batch_id = @batch_id
+		WHERE table_name = 'customers';	
 
-
-				SELECT 
-					customer_id,
-					REPLACE(LOWER(TRIM(SUBSTRING(first_name,1,5))),'1','i')  +
-					REPLACE(LOWER(TRIM(SUBSTRING (first_name,6,LEN(first_name)))),'@','a') AS first_name ,
-					REPLACE(LOWER(TRIM(last_name)),'@','a') AS last_name,
-					CASE 
-						WHEN email IS NULL THEN 'N/A'
-					ELSE  LEFT(LOWER(email), CHARINDEX('@', email) - 1) -- username
-						+ '@' +
-						REPLACE(SUBSTRING(LOWER(email), CHARINDEX('@', email) + 1, LEN(email)), '@', '')  END AS email ,
-
-					CASE 
-						WHEN phone IS NULL THEN 'N/A'
-					ELSE phone END phone ,
-					CASE 
-						WHEN gender IS NULL THEN 'N/A'
-					ELSE REPLACE(TRIM(LOWER(gender)),'@','a') END gender,
-					CASE 
-						WHEN city IS NULL THEN 'N/A'
-					ELSE REPLACE(TRIM(LOWER(city)),'@','a') END city ,
-					CASE 
-						WHEN age IS NULL THEN 'N/A'
-					ELSE REPLACE(TRIM(LOWER(age)),'@','a') END age,
-
-					CASE 
-						WHEN income_level IS NULL THEN 'N/A'
-					ELSE (TRIM(LOWER(income_level))) END income_level,
-					CASE 
-						WHEN loyalty_score IS NULL THEN 'N/A'
-					ELSE (TRIM(LOWER(loyalty_score))) END loyalty_score ,
-
-
-					CASE 
-						WHEN segment IS NULL THEN 'N/A'
-					ELSE REPLACE(TRIM(LOWER(segment)),'@','a') END segment,
-					CASE 
-						WHEN preferred_device IS NULL THEN 'N/A'
-					ELSE REPLACE(TRIM(LOWER(preferred_device)),'@','a') END preferred_device,
-					CASE 
-						WHEN marital_status IS NULL THEN 'N/A'
-					ELSE REPLACE(TRIM(LOWER(marital_status)),'@','a') END marital_status,
-					created_at,
-					updated_at,
-					
-					batch_id = @batch_id
-	
-
-				FROM bronze.customers
-		END
-		ELSE 
-			BEGIN
-
-				INSERT INTO silver.customers (
-											   customer_id	,
-											   first_name ,
-											   last_name ,
-											   email ,
-											   phone ,	
-											   gender	,
-											   city	,                          
-											   age,
-											   income_level	,
-											   loyalty_score ,
-											   segment,
-											   preferred_device,
-											   marital_status ,
-											   created_at,
-											   updated_at ,
-											   
-											   batch_id
-											   )
-
-
-
-				SELECT 
-					customer_id,
-					REPLACE(LOWER(TRIM(SUBSTRING(first_name,1,5))),'1','i')  +
-					REPLACE(LOWER(TRIM(SUBSTRING (first_name,6,LEN(first_name)))),'@','a') AS first_name ,
-					REPLACE(LOWER(TRIM(last_name)),'@','a') AS last_name,
-					CASE 
-						WHEN email IS NULL THEN 'N/A'
-					ELSE  LEFT(LOWER(email), CHARINDEX('@', email) - 1) -- username
-						+ '@' +
-						REPLACE(SUBSTRING(LOWER(email), CHARINDEX('@', email) + 1, LEN(email)), '@', '')  END AS email ,
-
-					CASE 
-						WHEN phone IS NULL THEN 'N/A'
-					ELSE phone END phone ,
-					CASE 
-						WHEN gender IS NULL THEN 'N/A'
-					ELSE REPLACE(TRIM(LOWER(gender)),'@','a') END gender,
-					CASE 
-						WHEN city IS NULL THEN 'N/A'
-					ELSE REPLACE(TRIM(LOWER(city)),'@','a') END city ,
-					CASE 
-						WHEN age IS NULL THEN 'N/A'
-					ELSE REPLACE(TRIM(LOWER(age)),'@','a') END age,
-
-					CASE 
-						WHEN income_level IS NULL THEN 'N/A'
-					ELSE (TRIM(LOWER(income_level))) END income_level,
-					CASE 
-						WHEN loyalty_score IS NULL THEN 'N/A'
-					ELSE (TRIM(LOWER(loyalty_score))) END loyalty_score ,
-
-
-					CASE 
-						WHEN segment IS NULL THEN 'N/A'
-					ELSE REPLACE(TRIM(LOWER(segment)),'@','a') END segment,
-					CASE 
-						WHEN preferred_device IS NULL THEN 'N/A'
-					ELSE REPLACE(TRIM(LOWER(preferred_device)),'@','a') END preferred_device,
-					CASE 
-						WHEN marital_status IS NULL THEN 'N/A'
-					ELSE REPLACE(TRIM(LOWER(marital_status)),'@','a') END marital_status,
-					created_at,
-					updated_at,
-					
-					batch_id = @batch_id
-	
-				FROM bronze.customers
-				WHERE TRY_CAST (updated_at AS DATETIME) > @last_ingestion_datetime ;
-				
-			END
-			-- Update control table for this table
-				UPDATE silver.control_table
-				SET last_ingestion_datetime = GETDATE(),
-					last_batch_id = @batch_id
-				WHERE table_name = 'customers';
-
-
-
-	SELECT  @last_ingestion_datetime = last_ingestion_datetime 
+	SELECT  @last_ingestion_datetime  =  last_ingestion_datetime 
 	FROM silver.control_table
 	WHERE table_name = 'products';
-	IF @last_ingestion_datetime <= '2000-01-01'
-	
-		BEGIN
-	
-			INSERT INTO silver.products(
-										  product_id,
-										  product_name,
-										  category,
-										  brand,
-										  price,
-										  discount,
-										  rating,
-										  stock,
-										  weight_g ,
-										  color,
-										  created_at
-										  ,updated_at,
-										  
-										  batch_id
-											   )
 
+	MERGE silver.products AS tar
+		USING (
+			SELECT * FROM bronze.products
+			WHERE TRY_CAST(updated_at AS DATETIME) > @last_ingestion_datetime
+           OR @last_ingestion_datetime <= '2000-01-01'  -- for initial load
+				) AS src 
+		ON tar.product_id = src.product_id
 
-
-				SELECT  
-					product_id ,
-					CASE WHEN
-						product_name  IS NULL THEN 'N/A'
-					ELSE REPLACE(LOWER(TRIM(product_name)),'@','a') END product_name ,
-					CASE WHEN
-						category  IS NULL THEN 'N/A'
-					ELSE REPLACE(LOWER(TRIM(category)),'@','a') END category,
-					CASE WHEN
-						brand  IS NULL THEN 'N/A'
-					ELSE REPLACE(LOWER(TRIM(brand)),'@','a') END brand,
-					price,
-					discount,
-					rating,
-					stock,
-					weight_g,
-					CASE WHEN
-						color  IS NULL THEN 'N/A'
-					ELSE REPLACE(LOWER(TRIM(color)),'@','a') END color,
-					created_at,
-					updated_at,
+		WHEN MATCHED THEN 
+			   UPDATE SET 
+						tar.product_id =src.product_id,
+						tar.product_name= CASE WHEN
+											src.product_name  IS NULL THEN 'N/A'
+										ELSE REPLACE(LOWER(TRIM(src.product_name)),'@','a') END ,
+						tar.category = CASE WHEN
+											src.category  IS NULL THEN 'N/A'
+										ELSE REPLACE(LOWER(TRIM(src.category)),'@','a') END ,
+						tar.brand =	CASE WHEN
+											src.brand  IS NULL THEN 'N/A'
+									ELSE REPLACE(LOWER(TRIM(src.brand)),'@','a') END ,
+					tar.price = src.price,
+					tar.discount = src.discount,
+					tar.rating = src.rating,
+					tar.stock = src.stock,
+					tar.weight_g = src.weight_g,
+					tar.color = CASE WHEN
+									src.color  IS NULL THEN 'N/A'
+								ELSE REPLACE(LOWER(TRIM(src.color)),'@','a') END,
+					tar.created_at = src.created_at,
+					tar.updated_at= src.updated_at,
 					
-					batch_id = @batch_id
-
-
-				FROM bronze.products
-		END
-		ELSE 
-			BEGIN
-
-				INSERT INTO silver.products(
-										  product_id,
-										  product_name,
-										  category,
-										  brand,
-										  price,
-										  discount,
-										  rating,
-										  stock,
-										  weight_g ,
-										  color,
-										  created_at
-										  ,updated_at,
-										
-										  batch_id
-											   )
-
-
-
-				SELECT 
-
-					product_id ,
-					CASE WHEN
-						product_name  IS NULL THEN 'N/A'
-					ELSE REPLACE(LOWER(TRIM(product_name)),'@','a') END product_name ,
-					CASE WHEN
-						category  IS NULL THEN 'N/A'
-					ELSE REPLACE(LOWER(TRIM(category)),'@','a') END category,
-					CASE WHEN
-						brand  IS NULL THEN 'N/A'
-					ELSE REPLACE(LOWER(TRIM(brand)),'@','a') END brand,
-					price,
-					discount,
-					rating,
-					stock,
-					weight_g,
-					CASE WHEN
-						color  IS NULL THEN 'N/A'
-					ELSE REPLACE(LOWER(TRIM(color)),'@','a') END color,
-					created_at,
-					updated_at,
-					
-					batch_id = @batch_id
-
-
-				FROM bronze.products
-				WHERE TRY_CAST (updated_at AS DATETIME) > @last_ingestion_datetime ;
-				
-			END
-			-- Update control table for this table
-				UPDATE silver.control_table
-				SET last_ingestion_datetime = GETDATE(),
-					last_batch_id = @batch_id
-				WHERE table_name = 'products';
-
-
-
-	SELECT  @last_ingestion_datetime = last_ingestion_datetime 
-	FROM silver.control_table
-	WHERE table_name = 'payments';
-	IF @last_ingestion_datetime <= '2000-01-01'
+					tar.batch_id = @batch_id
 	
-		BEGIN
-	
-			INSERT INTO silver.payments(
-										payment_id,
-										order_id,
-										amount,
-										payment_method,
-										payment_gateway ,
-										payment_status,
-										currency,
-										exchange_rate,
-										created_at,
-										updated_at,
-										batch_id 
-											   )
-
-
-
-				SELECT 
-					payment_id,
-					order_id,
-					amount,
+	WHEN NOT MATCHED BY TARGET THEN
+			INSERT (product_id,  product_name, category,  brand,  price,  discount, rating,  stock,
+										  weight_g , color, created_at,updated_at, batch_id)
+			VALUES (
+					src.product_id ,
 					CASE WHEN
-						payment_method  IS NULL THEN 'N/A'
-					ELSE REPLACE(LOWER(TRIM(payment_method)),'@','a') END payment_method,
+						src.product_name  IS NULL THEN 'N/A'
+					ELSE REPLACE(LOWER(TRIM(product_name)),'@','a') END  ,
 					CASE WHEN
-						payment_gateway  IS NULL THEN 'N/A'
-					ELSE REPLACE(LOWER(TRIM(payment_gateway)),'@','a') END payment_gateway,
+						src.category  IS NULL THEN 'N/A'
+					ELSE REPLACE(LOWER(TRIM(src.category)),'@','a') END ,
 					CASE WHEN
-						payment_status  IS NULL THEN 'N/A'
-					ELSE REPLACE(LOWER(TRIM(payment_status)),'@','a') END payment_status,
+						src.brand  IS NULL THEN 'N/A'
+					ELSE REPLACE(LOWER(TRIM(src.brand)),'@','a') END,
+					src.price,
+					src.discount,
+					src.rating,
+					src.stock,
+					src.weight_g,
 					CASE WHEN
-						currency  IS NULL THEN 'N/A'
-					ELSE REPLACE(UPPER(TRIM(currency)),'@','a') END currency,
-					exchange_rate,
-					created_at,
-					updated_at,
-					batch_id = @batch_id
-				FROM bronze.payments
+						src.color  IS NULL THEN 'N/A'
+					ELSE REPLACE(LOWER(TRIM(src.color)),'@','a') END ,
+					src.created_at,
+					src.updated_at,
+					@batch_id
+			);
 
+		-- Update control table
+		UPDATE silver.control_table
+		SET last_ingestion_datetime = GETDATE(),
+			last_batch_id = @batch_id
+		WHERE table_name = 'products';
 
-				
-		END
-		ELSE 
-			BEGIN
-
-				INSERT INTO silver.payments(
-										payment_id,
-										order_id,
-										amount,
-										payment_method,
-										payment_gateway ,
-										payment_status,
-										currency,
-										exchange_rate,
-										created_at,
-										updated_at,
-										batch_id 
-											   )
-
-
-
-				SELECT 
-					payment_id,
-					order_id,
-					amount,
-					CASE WHEN
-						payment_method  IS NULL THEN 'N/A'
-					ELSE REPLACE(LOWER(TRIM(payment_method)),'@','a') END payment_method,
-					CASE WHEN
-						payment_gateway  IS NULL THEN 'N/A'
-					ELSE REPLACE(LOWER(TRIM(payment_gateway)),'@','a') END payment_gateway,
-					CASE WHEN
-						payment_status  IS NULL THEN 'N/A'
-					ELSE REPLACE(LOWER(TRIM(payment_status)),'@','a') END payment_status,
-					CASE WHEN
-						currency  IS NULL THEN 'N/A'
-					ELSE REPLACE(UPPER(TRIM(currency)),'@','a') END currency,
-					exchange_rate,
-					created_at,
-					updated_at,
-					batch_id = @batch_id
-				FROM bronze.payments
-				WHERE TRY_CAST (updated_at AS DATETIME) > @last_ingestion_datetime ;
-				
-			END
-			-- Update control table for this table
-				UPDATE silver.control_table
-				SET last_ingestion_datetime = GETDATE(),
-					last_batch_id = @batch_id
-				WHERE table_name = 'payments';
-
-
-	SELECT  @last_ingestion_datetime = last_ingestion_datetime 
-	FROM silver.control_table
-	WHERE table_name = 'order_items';
-	IF @last_ingestion_datetime <= '2000-01-01'
-	
-		BEGIN
-	
-			INSERT INTO silver.order_items(
-										order_item_id ,
-										order_id,
-										product_id ,
-										quantity,
-										unit_price ,
-										tax,
-									    discount_amount ,
-									    fulfilled_by,    
-									    created_at ,
-									    updated_at ,
-									    batch_id 
-											   )
-
-
-
-				SELECT 
-					order_item_id,
-					order_id,
-					product_id,
-					CASE 
-						WHEN quantity IS NULL OR quantity = 0 THEN 1
-					ELSE quantity END quantity,
-					unit_price,
-					tax,
-					discount_amount,
-					CASE WHEN
-							fulfilled_by  IS NULL THEN 'N/A'
-					ELSE REPLACE(LOWER(TRIM(fulfilled_by)),'@','a') END fulfilled_by,
-					created_at,
-					updated_at,
-					batch_id = @batch_id
-				FROM bronze.order_items
-
-
-				
-		END
-		ELSE 
-			BEGIN
-
-				INSERT INTO silver.order_items(
-										order_item_id ,
-										order_id,
-										product_id ,
-										quantity,
-										unit_price ,
-										tax,
-									    discount_amount ,
-									    fulfilled_by,    
-									    created_at ,
-									    updated_at ,
-									    batch_id 
-											   )
-
-
-
-				SELECT 
-					order_item_id,
-					order_id,
-					product_id,
-					CASE 
-						WHEN quantity IS NULL OR quantity = 0 THEN 1
-					ELSE quantity END quantity,
-					unit_price,
-					tax,
-					discount_amount,
-					CASE WHEN
-							fulfilled_by  IS NULL THEN 'N/A'
-					ELSE REPLACE(LOWER(TRIM(fulfilled_by)),'@','a') END fulfilled_by,
-					created_at,
-					updated_at,
-					batch_id = @batch_id
-				FROM bronze.order_items
-				WHERE TRY_CAST (updated_at AS DATETIME) > @last_ingestion_datetime ;
-				
-			END
-			-- Update control table for this table
-				UPDATE silver.control_table
-				SET last_ingestion_datetime = GETDATE(),
-					last_batch_id = @batch_id
-				WHERE table_name = 'order_items';
-
-
-SELECT  @last_ingestion_datetime = last_ingestion_datetime 
+	SELECT  @last_ingestion_datetime  =  last_ingestion_datetime 
 	FROM silver.control_table
 	WHERE table_name = 'orders';
-	IF @last_ingestion_datetime <= '2000-01-01'
+
+	MERGE silver.orders AS tar
+		USING (
+			SELECT * FROM bronze.orders
+			WHERE TRY_CAST(updated_at AS DATETIME) > @last_ingestion_datetime
+           OR @last_ingestion_datetime <= '2000-01-01'  -- for initial load
+				) AS src 
+		ON tar.order_id= src.order_id
+
+		WHEN MATCHED THEN 
+			   UPDATE SET 
+						tar.order_id =  src.order_id,
+						tar.customer_id = src.customer_id,
+						tar.order_status = CASE WHEN
+												src.order_status  IS NULL THEN 'N/A'
+											ELSE REPLACE(LOWER(TRIM(src.order_status)),'@','a') END ,
+						tar.shipping_method = CASE WHEN
+												src.shipping_method  IS NULL THEN 'N/A'
+						ELSE REPLACE(LOWER(TRIM(src.shipping_method)),'@','a') END,
+						tar.payment_terms = CASE WHEN
+												src.payment_terms  IS NULL THEN 'N/A'
+											ELSE REPLACE(LOWER(TRIM(src.payment_terms)),'@','a') END,
+						tar.shipping_fee =src.shipping_fee,
+						tar.created_at = src.created_at,
+						tar.updated_at =  src.updated_at,
+						tar.batch_id = @batch_id
 	
-		BEGIN
+	WHEN NOT MATCHED BY TARGET THEN
+			INSERT (order_id,customer_id,order_status, shipping_method,payment_terms,shipping_fee,
+				created_at,updated_at , batch_id)
+			VALUES (
+						src.order_id,
+						src.customer_id,
+						CASE WHEN
+								src.order_status  IS NULL THEN 'N/A'
+						ELSE REPLACE(LOWER(TRIM(src.order_status)),'@','a') END ,
+						CASE WHEN
+								src.shipping_method  IS NULL THEN 'N/A'
+						ELSE REPLACE(LOWER(TRIM(src.shipping_method)),'@','a') END ,
+						CASE WHEN
+								src.payment_terms  IS NULL THEN 'N/A'
+						ELSE REPLACE(LOWER(TRIM(src.payment_terms)),'@','a') END,
+						src.shipping_fee,
+						src.created_at,
+						src.updated_at,
+						@batch_id
+			);
+
+		-- Update control table
+		UPDATE silver.control_table
+		SET last_ingestion_datetime = GETDATE(),
+			last_batch_id = @batch_id
+		WHERE table_name = 'orders';
+
+	SELECT  @last_ingestion_datetime  =  last_ingestion_datetime 
+	FROM silver.control_table
+	WHERE table_name = 'order_items';
+
+	MERGE silver.order_items AS tar
+		USING (
+			SELECT * FROM bronze.order_items
+			WHERE TRY_CAST(updated_at AS DATETIME) > @last_ingestion_datetime
+           OR @last_ingestion_datetime <= '2000-01-01'  -- for initial load
+				) AS src 
+		ON tar.order_item_id= src.order_item_id
+
+		WHEN MATCHED THEN 
+			   UPDATE SET 
+						tar.order_item_id =  src.order_item_id,
+						tar.order_id = src.order_id,
+						tar.product_id  = src.product_id, 
+						tar.quantity = CASE 
+										WHEN src.quantity IS NULL OR src.quantity = 0 THEN 1
+									ELSE src.quantity END ,
+						tar.unit_price = src.unit_price,
+						tar.tax =  src.tax,
+						tar.discount_amount = src.discount_amount,
+						tar.fulfilled_by =  CASE WHEN
+												src.fulfilled_by  IS NULL THEN 'N/A'
+											ELSE REPLACE(LOWER(TRIM(src.fulfilled_by)),'@','a') END ,
+						tar.created_at = src.created_at,
+						tar.updated_at = src.updated_at,
+						tar.batch_id = @batch_id
 	
-			INSERT INTO silver.orders(
-											order_id,
-											customer_id,
-											order_status,
-											shipping_method,
-											payment_terms,
-											shipping_fee,
-											created_at,
-											updated_at ,
-											
-											batch_id 
-																   )
-					SELECT 
-						order_id,
-						customer_id,
-						CASE WHEN
-								order_status  IS NULL THEN 'N/A'
-						ELSE REPLACE(LOWER(TRIM(order_status)),'@','a') END order_status,
-						CASE WHEN
-								shipping_method  IS NULL THEN 'N/A'
-						ELSE REPLACE(LOWER(TRIM(shipping_method)),'@','a') END shipping_method,
-						CASE WHEN
-								payment_terms  IS NULL THEN 'N/A'
-						ELSE REPLACE(LOWER(TRIM(payment_terms)),'@','a') END payment_terms,
-						shipping_fee,
-						created_at,
-						updated_at,
-						
-						batch_id = @batch_id
-
-					FROM bronze.orders
-
-
-				
-		END
-		ELSE 
-			BEGIN
-
-				INSERT INTO silver.orders(
-											order_id,
-											customer_id,
-											order_status,
-											shipping_method,
-											payment_terms,
-											shipping_fee,
-											created_at,
-											updated_at ,
-											
-											batch_id 
-											   )
-				SELECT 
-					order_id,
-					customer_id,
+	WHEN NOT MATCHED BY TARGET THEN
+			INSERT (order_item_id ,order_id,product_id ,quantity,unit_price ,tax, discount_amount ,
+					fulfilled_by, created_at , updated_at ,batch_id )
+			VALUES (
+					src.order_item_id,
+					src.order_id,
+					src.product_id,
+					CASE 
+						WHEN src.quantity IS NULL OR src.quantity = 0 THEN 1
+					ELSE src.quantity END ,
+					src.unit_price,
+					src.tax,
+					src.discount_amount,
 					CASE WHEN
-							order_status  IS NULL THEN 'N/A'
-					ELSE REPLACE(LOWER(TRIM(order_status)),'@','a') END order_status,
+							src.fulfilled_by  IS NULL THEN 'N/A'
+					ELSE REPLACE(LOWER(TRIM(src.fulfilled_by)),'@','a') END,
+					src.created_at,
+					src.updated_at,
+					@batch_id
+			);
+
+		-- Update control table
+		UPDATE silver.control_table
+		SET last_ingestion_datetime = GETDATE(),
+			last_batch_id = @batch_id
+		WHERE table_name = 'order_items';
+	
+	SELECT  @last_ingestion_datetime  =  last_ingestion_datetime 
+	FROM silver.control_table
+	WHERE table_name = 'payments';
+
+	MERGE silver.payments AS tar
+		USING (
+			SELECT * FROM bronze.payments
+			WHERE TRY_CAST(updated_at AS DATETIME) > @last_ingestion_datetime
+           OR @last_ingestion_datetime <= '2000-01-01'  -- for initial load
+				) AS src 
+		ON tar.payment_id= src.payment_id
+
+		WHEN MATCHED THEN 
+			   UPDATE SET 
+						tar.payment_id =  src.payment_id,
+						tar.order_id = src.order_id,
+						tar.amount  = src.amount, 
+						tar.payment_method = CASE WHEN
+												src.payment_method  IS NULL THEN 'N/A'
+											ELSE REPLACE(LOWER(TRIM(src.payment_method)),'@','a') END,
+						tar.payment_gateway = CASE WHEN
+												src.payment_gateway  IS NULL THEN 'N/A'
+											ELSE REPLACE(LOWER(TRIM(src.payment_gateway)),'@','a') END,
+						tar.payment_status = CASE WHEN
+												src.payment_status  IS NULL THEN 'N/A'
+											ELSE REPLACE(LOWER(TRIM(src.payment_status)),'@','a') END ,
+						tar.currency = 		CASE WHEN
+												src.currency  IS NULL THEN 'N/A'
+											ELSE REPLACE(UPPER(TRIM(src.currency)),'@','a') END ,
+						tar.exchange_rate = src.exchange_rate ,
+						tar.created_at = src.created_at,
+						tar.updated_at = src.updated_at,
+						tar.batch_id = @batch_id
+	
+	WHEN NOT MATCHED BY TARGET THEN
+			INSERT (payment_id,order_id,amount,payment_method,payment_gateway ,payment_status,
+					currency,exchange_rate,created_at,updated_at,batch_id )
+			VALUES (
+					src.payment_id,
+					src.order_id,
+					src.amount,
 					CASE WHEN
-							shipping_method  IS NULL THEN 'N/A'
-					ELSE REPLACE(LOWER(TRIM(shipping_method)),'@','a') END shipping_method,
+						src.payment_method  IS NULL THEN 'N/A'
+					ELSE REPLACE(LOWER(TRIM(src.payment_method)),'@','a') END ,
 					CASE WHEN
-							payment_terms  IS NULL THEN 'N/A'
-					ELSE REPLACE(LOWER(TRIM(payment_terms)),'@','a') END payment_terms,
-					shipping_fee,
-					created_at,
-					updated_at,
-					
-					batch_id = @batch_id
+						src.payment_gateway  IS NULL THEN 'N/A'
+					ELSE REPLACE(LOWER(TRIM(src.payment_gateway)),'@','a') END ,
+					CASE WHEN
+						src.payment_status  IS NULL THEN 'N/A'
+					ELSE REPLACE(LOWER(TRIM(src.payment_status)),'@','a') END ,
+					CASE WHEN
+						src.currency  IS NULL THEN 'N/A'
+					ELSE REPLACE(UPPER(TRIM(src.currency)),'@','a') END ,
+					src.exchange_rate,
+					src.created_at,
+					src.updated_at,
+					@batch_id
+			);
 
-				FROM bronze.orders
-				WHERE TRY_CAST (updated_at AS DATETIME) > @last_ingestion_datetime ;
-				
-			END
-			-- Update control table for this table
-				UPDATE silver.control_table
-				SET last_ingestion_datetime = GETDATE(),
-					last_batch_id = @batch_id
-				WHERE table_name = 'orders';
-
-
+		-- Update control table
+		UPDATE silver.control_table
+		SET last_ingestion_datetime = GETDATE(),
+			last_batch_id = @batch_id
+		WHERE table_name = 'payments';
+		
 END
-GO
-
-
-
-
-
-
-
