@@ -194,5 +194,3 @@ FROM sales;
 
 
 
-
-
