@@ -7,7 +7,7 @@ This project demonstrates a comprehensive data warehousingDesigned as a portfoli
 ---
 ## 🏗️ Data Architecture
 
-The data architecture for this project follows Medallion Architecture **Bronze**, **Silver**, and **Gold** layers: __[Data_Architecture](Docs/Data Architecture (Incremental Load).jpg)__
+The data architecture for this project follows Medallion Architecture **Bronze**, **Silver**, and **Gold** layers: ![Data Architecture](https://github.com/possibility01/Increamental-Refrersh-Full-Data-Warehouse-Project-In-SQL/blob/master/Docs/Data%20Architecture.jpg)
 
 
 1. **Bronze Layer**: Stores raw data as-is from the source systems. Data is ingested from CSV Files into SQL Server Database.
