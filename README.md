@@ -1,7 +1,7 @@
 
 # Data Warehouse with Incremental Load - SQL Server Implementation
 
-Welcome to the **Data Warehouse** repository! 🚀  
+Welcome to the **Data Warehouse - Incremental load** repository! 🚀  
 This project demonstrates a comprehensive data warehousing Designed as a portfolio project, it highlights industry best practices in data engineering.
 
 ---
