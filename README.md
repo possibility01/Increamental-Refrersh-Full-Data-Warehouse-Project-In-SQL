@@ -189,5 +189,6 @@ CUSTOMERS (1) ────< ORDERS (1) ────< ORDER_ITEMS (n) >───�
 │  6. Gold views automatically reflect latest silver data         │
 │     • dim_customers, dim_product, dim_payments                  │
 │     • fact_order_sales                                          │
-│     • No ETL needed — real-time views                           │
+│     • No ETL needed - real-time views                           │
 └─────────────────────────────────────────────────────────────────┘
+```
