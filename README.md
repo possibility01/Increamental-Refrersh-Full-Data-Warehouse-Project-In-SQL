@@ -91,7 +91,7 @@ The project implements a **three-tier medallion architecture** for progressive d
 ### Schema Organization
 
 DataWarehouse
-```
+```text
 ├── bronze (Raw Data Layer)
 │   ├── Tables
 │   │   ├── staging_customers
@@ -134,7 +134,7 @@ DataWarehouse
 
 #### Entity Relationship Diagram
 ```
-CUSTOMERS (1) ────< ORDERS (1) ────< ORDER_ITEMS (n) >──── (1) PRODUCTS
+CUSTOMERS(1) ────< ORDERS (1)────< ORDER_ITEMS (n)>──── (1) PRODUCTS
                       │
                       │
                       └────< PAYMENTS (1)
