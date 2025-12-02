@@ -127,6 +127,7 @@ DataWarehouse
         ├── dim_customers
         ├── dim_product
         ├── dim_payments
+        ├── dim_date
         └── fact_order_sales
 ```
 
@@ -290,3 +291,9 @@ WHERE rank_ = 1  -- Keep only first payment per order
 | `discount_amount` | Base | Direct from source | Fully additive |
 | `shipping_fee` | Base | Order-level cost | Semi-additive* |
 | `order_amount` | Calculated | `(unit_price × quantity) + tax - discount` | Fully additive |
+
+
+
+## 🛡️ License
+
+This project is licensed under the [MIT License](LICENSE). You are free to use, modify, and share this project with proper attribution.
