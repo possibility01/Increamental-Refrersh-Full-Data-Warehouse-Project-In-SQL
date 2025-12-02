@@ -146,8 +146,8 @@ CUSTOMERS(1) ────< ORDERS (1)────< ORDER_ITEMS (n)>──── 
 ┌─────────────────────────────────────────────────────────────────┐
 │                    PHASE 1: INITIALIZATION                      │
 ├─────────────────────────────────────────────────────────────────┤
-│  1. bronze.control_table()        → Create Bronze metadata     │
-│  2. silver.silver_control_table() → Create Silver metadata     │
+│  1. bronze.control_table()        → Create Bronze metadata      │
+│  2. silver.silver_control_table() → Create Silver metadata      │
 └─────────────────────────────────────────────────────────────────┘
                            ↓
 ┌─────────────────────────────────────────────────────────────────┐
@@ -187,8 +187,27 @@ CUSTOMERS(1) ────< ORDERS (1)────< ORDER_ITEMS (n)>──── 
 │                 PHASE 4: GOLD LAYER (AUTOMATIC)                 │
 ├─────────────────────────────────────────────────────────────────┤
 │  6. Gold views automatically reflect latest silver data         │
-│     • dim_customers, dim_product, dim_payments                  │
+│     • dim_customers,dim_product,dim_payments,dim_date           │
 │     • fact_order_sales                                          │
 │     • No ETL needed - real-time views                           │
 └─────────────────────────────────────────────────────────────────┘
 ```
+### Incremental Loading Strategy
+
+#### Control Table Pattern
+
+Each layer maintains a control table tracking:
+```sql
+CREATE TABLE bronze.bronze_control (
+    table_name NVARCHAR(50) PRIMARY KEY,
+    last_ingestion_datetime DATETIME,      -- High-water mark
+    last_batch_id NVARCHAR(50)             -- Batch identifier
+);
+
+```
+
+## 🌟 Dimensional Model
+
+### Star Schema Design
+
+![Star Schema Design](https://github.com/possibility01/Increamental-Refrersh-Full-Data-Warehouse-Project-In-SQL/blob/master/Docs/Data%20Model.jpg)
