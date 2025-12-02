@@ -133,6 +133,20 @@ CREATE VIEW  gold.dim_payments AS
 						
 GO
 
+IF OBJECT_ID ('gold.dim_date' ,'V') IS NOT NULL 
+DROP VIEW  gold.dim_date;
+GO
+
+CREATE VIEW gold.dim_date AS
+SELECT DISTINCT
+    CAST(created_at AS DATE) as date_key,
+    YEAR(created_at) as year,
+    MONTH(created_at) as month,
+    DAY(created_at) as day,
+    DATEPART(QUARTER, created_at) as quarter,
+    DATENAME(WEEKDAY, created_at) as day_name
+FROM silver.orders;
+
 
 -- =============================================================================
 -- Create Fact Table: gold.fact_sales
@@ -153,7 +167,6 @@ WITH sales AS (
 		p.product_key,
         o.order_status,
         pay.payment_key,
-        
         i.quantity,
         i.unit_price,
         i.tax,
@@ -170,13 +183,13 @@ WITH sales AS (
 		 JOIN gold.dim_payments pay ON pay.order_id =  o.order_id
 )
 SELECT 
-		order_id,
+		
 		customer_key,
 		payment_key,
-        order_item_id,
 		product_key,
-        order_status,
-        
+		order_id,
+		order_item_id,
+        order_status,  
         quantity,
         unit_price,
         tax,
@@ -184,20 +197,5 @@ SELECT
 		created_at
 FROM sales;
 
-IF OBJECT_ID ('gold.dim_date' ,'V') IS NOT NULL 
-DROP VIEW  gold.dim_date;
-GO
 
-CREATE VIEW gold.dim_date AS
-SELECT DISTINCT
-    CAST(created_at AS DATE) as date_key,
-    YEAR(created_at) as year,
-    MONTH(created_at) as month,
-    DAY(created_at) as day,
-    DATEPART(QUARTER, created_at) as quarter,
-    DATENAME(WEEKDAY, created_at) as day_name
-FROM silver.orders;
-
-
-
-SELECT * FROM gold.fact_order_sales
+select * FROM gold.fact_order_sales 
