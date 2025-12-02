@@ -86,6 +86,111 @@ The project implements a **three-tier medallion architecture** for progressive d
 | **Silver** | Cleansing & Standardization | High | Normalized | Data Engineers |
 | **Gold** | Business Analytics | Highest | Denormalized | Business Analysts |
 
+# 📊 Database Structure
+
+### Schema Organization
+```
+DataWarehouse
+├── bronze (Raw Data Layer)
+│   ├── Tables
+│   │   ├── staging_customers
+│   │   ├── customers
+│   │   ├── staging_products
+│   │   ├── products
+│   │   ├── staging_orders
+│   │   ├── orders
+│   │   ├── staging_order_items
+│   │   ├── order_items
+│   │   ├── staging_payments
+│   │   ├── payments
+│   │   └── bronze_control (metadata)
+│   └── Stored Procedures
+│       ├── control_table
+│       ├── staging_tables
+│       └── inital_increamental_load
+│
+├── silver (Cleansed Data Layer)
+│   ├── Tables
+│   │   ├── customers
+│   │   ├── products
+│   │   ├── orders
+│   │   ├── order_items
+│   │   ├── payments
+│   │   └── control_table (metadata)
+│   └── Stored Procedures
+│       ├── silver_control_table
+│       └── inital_incremental_load
+│
+└── gold (Analytics Layer)
+    └── Views
+        ├── dim_customers
+        ├── dim_product
+        ├── dim_payments
+        └── fact_order_sales
+```
+
+### Data Model
+
+#### Entity Relationship Diagram
+```
+CUSTOMERS (1) ────< ORDERS (1) ────< ORDER_ITEMS (n) >──── (1) PRODUCTS
+                      │
+                      │
+                      └────< PAYMENTS (1)
+```
+## 🔄 ETL Pipeline
+
+### Pipeline Architecture
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    PHASE 1: INITIALIZATION                      │
+├─────────────────────────────────────────────────────────────────┤
+│  1. bronze.control_table()        → Create Bronze metadata     │
+│  2. silver.silver_control_table() → Create Silver metadata     │
+└─────────────────────────────────────────────────────────────────┘
+                           ↓
+┌─────────────────────────────────────────────────────────────────┐
+│                 PHASE 2: BRONZE LAYER LOADING                   │
+├─────────────────────────────────────────────────────────────────┤
+│  3. bronze.staging_tables()                                     │
+│     • TRUNCATE staging tables                                   │
+│     • BULK INSERT from CSV files                                │
+│     • Load 5 tables: customers, products, orders,               │
+│       order_items, payments                                     │
+│                                                                 │
+│  4. bronze.inital_increamental_load()                           │
+│     • Check last_ingestion_datetime in control table            │
+│     • IF first run (≤2000-01-01): Full load all data            │
+│     • ELSE: Incremental load (WHERE updated_at > last_load)     │
+│     • MERGE staging → bronze persistent tables                  │
+│     • Assign batch_id to all records                            │
+│     • UPDATE control table with new timestamp                   │
+└─────────────────────────────────────────────────────────────────┘
+                           ↓
+┌─────────────────────────────────────────────────────────────────┐
+│                 PHASE 3: SILVER LAYER TRANSFORMATION            │
+├─────────────────────────────────────────────────────────────────┤
+│  5. silver.inital_incremental_load()                            │
+│     • Read from bronze persistent tables                        │
+│     • Apply data quality rules:                                 │
+│       - Standardize text (lowercase, trim)                      │
+│       - Replace special characters (@→a, 1→i)                   │
+│       - Handle NULLs (text→'N/A', numeric→0)                    │
+│       - Validate email formats                                  │
+│       - Apply business rules (quantity≥1)                       │
+│     • MERGE into silver tables                                  │
+│     • UPDATE control table                                      │
+└─────────────────────────────────────────────────────────────────┘
+                           ↓
+┌─────────────────────────────────────────────────────────────────┐
+│                 PHASE 4: GOLD LAYER (AUTOMATIC)                 │
+├─────────────────────────────────────────────────────────────────┤
+│  6. Gold views automatically reflect latest silver data         │
+│     • dim_customers, dim_product, dim_payments                  │
+│     • fact_order_sales                                          │
+│     • No ETL needed - real-time views                           │
+└─────────────────────────────────────────────────────────────────┘
+
 1. **Bronze Layer**: Stores raw data as-is from the source systems. Data is ingested from CSV Files into SQL Server Database. Bronze layer has a staging tables for each csv -bronze.staging_(name of the csv), which pupolate the real table that feeds the silver layer, which work of the staging table table to get the old data and new data from the source and use that to upsert into the real table for new record and update any changed record from 
 2. **Silver Layer**: This layer includes data cleansing, standardization, and normalization processes to prepare data for analysis.
 3. **Gold Layer**: Houses business-ready data modeled into a star schema required for reporting and analytics.
