@@ -198,4 +198,3 @@ SELECT
 FROM sales;
 
 
-select * FROM gold.fact_order_sales 

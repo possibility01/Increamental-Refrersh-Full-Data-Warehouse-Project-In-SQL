@@ -1,50 +1,42 @@
 /*
-==========================================================================
-Stored Procedure: bronze.control_table
-==========================================================================
+====================================================================================================
+BRONZE LAYER ETL PROCEDURES – DOCUMENTATION
+====================================================================================================
+
+1) Stored Procedure: bronze.control_table
+----------------------------------------------------------------------------------------------------
 Purpose:
-    Ensures that the control table for the Bronze layer exists and is properly initialized.
-    The control table is used to track incremental and full load ETL runs for all Bronze tables.
+    Creates and initializes the Bronze layer control table used to track incremental and 
+    full-load ETL operations.
 
-Actions Performed:
-    - Checks if the control table 'bronze.bronze_control' exists.
-    - Creates the control table if it does not exist.
-    - Inserts initial rows for all relevant Bronze tables with a default timestamp ('2000-01-01').
-    - Logs creation time and status messages to assist with monitoring.
+What the Procedure Does:
+    - Checks whether the control table bronze.bronze_control exists.
+    - If missing, creates the table and inserts default tracking records for all Bronze tables.
+    - Initializes each table with a default last_ingestion_datetime = '2000-01-01'.
+    - Prints timing and status logs for monitoring.
 
-Parameters:
-    None
-    This stored procedure does not accept or return any values.
+Control Table Structure:
+    table_name               NVARCHAR(50)   ? Name of the source Bronze table
+    last_ingestion_datetime  DATETIME       ? Timestamp of last successful load
+    last_batch_id            NVARCHAR(50)   ? Batch identifier for the load
 
-Usage Example:
+Execution:
     EXEC bronze.control_table;
 
-Control Table Schema:
-    table_name              NVARCHAR(50)  -- Name of the table being tracked
-    last_ingestion_datetime DATETIME      -- Timestamp of the last ETL run
-    last_batch_id           NVARCHAR(50)  -- Batch ID of the last ETL run
-
 Notes:
-    - Default initialization timestamp is '2000-01-01'.
-    - Ensure the procedure is executed before running incremental/full loads.
-==========================================================================
-==========================================================================
-Stored Procedure: bronze.staging_tables
-==========================================================================
+    - This procedure must be executed before any incremental or full Bronze layer loads.
+====================================================================================================
+
+
+2) Stored Procedure: bronze.staging_tables
+----------------------------------------------------------------------------------------------------
 Purpose:
-    Loads raw data from external updating CSV files into the staging tables in the Bronze schema.
+    Loads all external CSV files into their respective Bronze staging tables.
 
-Actions Performed:
-    - Truncates each staging table to ensure a fresh copy before loading.
-    - Uses BULK INSERT to load data from external CSV files into staging tables.
-    - Logs start and end times for each table load to track duration and performance.
-
-Parameters:
-    None
-    This stored procedure does not accept or return any values.
-
-Usage Example:
-    EXEC bronze.staging_tables;
+What the Procedure Does:
+    - Truncates each staging table to ensure a clean load.
+    - Uses BULK INSERT to load CSV data into the Bronze staging tables.
+    - Captures timing for each load and prints progress logs.
 
 Tables Loaded:
     - bronze.staging_customers
@@ -53,34 +45,30 @@ Tables Loaded:
     - bronze.staging_order_items
     - bronze.staging_payments
 
+Execution:
+    EXEC bronze.staging_tables;
+
 Notes:
-    - CSV files must exist in the specified file paths.
-    - Ensure correct file permissions to allow BULK INSERT operations.
-    - Recommended to run this procedure before performing initial/incremental Bronze loads.
-==========================================================================
+    - CSV files must exist at the specified file paths.
+    - Appropriate file permissions are required for BULK INSERT.
+    - Recommended to run before initial or incremental Bronze loads.
+====================================================================================================
 
-==========================================================================
-Stored Procedure: bronze.initial_incremental_load
-==========================================================================
+
+3) Stored Procedure: bronze.initial_incremental_load
+----------------------------------------------------------------------------------------------------
 Purpose:
-    Performs the initial full load and subsequent incremental loads from staging tables
-    into the main Bronze tables, while tracking ETL progress using the control table.
+    Performs both the initial full load and subsequent incremental loads from staging tables 
+    into the main Bronze tables, controlled by the bronze_control table.
 
-Actions Performed:
-    - Checks the last ingestion timestamp from the control table for each Bronze table.
-    - Performs full load if the table has never been loaded (default timestamp: '2000-01-01').
-    - Performs incremental load for records updated after the last ingestion timestamp.
-    - Generates a batch ID for each ETL run to track loads.
-    - Updates the control table with the new ingestion timestamp and batch ID.
-    - Logs start and end times for each table load for performance tracking.
-    - Ensures data integrity using transactions; rolls back in case of errors.
-
-Parameters:
-    None
-    This stored procedure does not accept or return any values.
-
-Usage Example:
-    EXEC bronze.initial_incremental_load;
+What the Procedure Does:
+    - Looks up each table's last_ingestion_datetime from the control table.
+    - Executes a full load if last ingestion = '2000-01-01'.
+    - Executes an incremental load (MERGE) when data has been previously loaded.
+    - Generates a batch_id for tracking each ETL run.
+    - Updates the control table after each table load.
+    - Wraps the entire process in a transaction with TRY/CATCH for reliability.
+    - Logs timing for each table to support performance monitoring.
 
 Tables Loaded:
     - bronze.customers
@@ -89,12 +77,17 @@ Tables Loaded:
     - bronze.order_items
     - bronze.payments
 
+Execution:
+    EXEC bronze.initial_incremental_load;
+
+Batch ID Format:
+    yyyyMMdd_HHmm
+
 Notes:
-    - Make sure staging tables are loaded prior to executing this procedure.
-    - Recommended to execute bronze.control_table first to ensure control table exists.
-    - Batch ID format: 'yyyyMMdd_HHmm'.
-    - Errors during ETL will trigger transaction rollback for all affected tables.
-==========================================================================
+    - Staging tables must be loaded before running this procedure.
+    - The control table must be initialized (run bronze.control_table first).
+    - Any ETL failure triggers a rollback to maintain data integrity.
+====================================================================================================
 */
 
 

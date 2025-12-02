@@ -1,44 +1,80 @@
+
 /*
 ================================================================================
-SQL Server Stored Procedures for Silver Layer Incremental Loading
+SILVER LAYER – INCREMENTAL LOAD STORED PROCEDURES
 ================================================================================
 
+This script defines two stored procedures used to manage the Silver layer of a 
+Data Warehouse/Lakehouse architecture. The Silver layer contains cleansed, 
+standardized, and conformed data derived from the Bronze (raw) layer.
+
+--------------------------------------------------------------------------------
 1. Procedure: silver.silver_control_table
-   - Purpose: Creates a control table in the Silver schema if it does not already exist.
-   - Control table: silver.control_table
-       - Columns:
-           * table_name              : Name of the table being tracked
-           * last_ingestion_datetime : Timestamp of the last successful ingestion
-           * last_batch_id           : Identifier for the last batch loaded
-   - Initial tables added to control table: customers, products, orders, payments, order_items
-   - Default last_ingestion_datetime is set to '2000-01-01' and last_batch_id to NULL.
-   - If the control table already exists, no changes are made.
-   commit 
-2. Procedure: silver.inital_increamental_load
-   - Purpose: Performs an initial or incremental load of data from the Bronze layer into the Silver layer.
-   - Logic:
-       a. Generate a batch ID using current timestamp (yyyyMMdd_HHmm).
-       b. For each table (customers, products, payments, order_items, orders):
-           i. Fetch last_ingestion_datetime from silver.control_table.
-          ii. If last_ingestion_datetime <= '2000-01-01', perform a full initial load from bronze.<table>.
-         iii. Else, perform an incremental load by selecting only rows updated after last_ingestion_datetime.
-       c. Data cleansing and transformation:
-           - Lowercase and trim text fields.
-           - Replace unwanted characters like '@' or '1' in certain columns.
-           - Handle NULLs by replacing them with 'N/A'.
-           - Format email addresses to ensure consistent usernames.
-       d. Insert transformed data into silver.<table> along with batch_id.
-       e. Update silver.control_table with new last_ingestion_datetime and batch_id after each table load.
+--------------------------------------------------------------------------------
+Purpose:
+    Creates a metadata control table (silver.control_table) used for tracking the
+    last successful ingestion timestamp and batch ID for incremental processing.
 
-================================================================================
+Behavior:
+    - If the control table DOES NOT exist:
+        * Creates silver.control_table with columns:
+              • table_name               : Table being tracked
+              • last_ingestion_datetime : Last load timestamp
+              • last_batch_id           : Identifier for last batch
+        * Inserts default records for:
+              customers, products, orders, payments, order_items
+        * Sets:
+              last_ingestion_datetime = '2000-01-01'
+              last_batch_id = NULL
+    - If the control table ALREADY exists:
+        * Prints a message and makes no changes.
+
+Role in ETL:
+    This table ensures idempotency and allows incremental loads by maintaining a 
+    timestamp of the last ingestion per table.
+
+--------------------------------------------------------------------------------
+2. Procedure: silver.initial_incremental_load
+--------------------------------------------------------------------------------
+Purpose:
+    Performs **initial** or **incremental** loading of tables from the Bronze 
+    schema into the Silver schema, based on metadata recorded in the control table.
+
+High-Level Logic:
+    a. Generate a unique batch ID using current timestamp (format: yyyyMMdd_HHmm).
+    b. For each table (customers, products, orders, order_items, payments):
+         1. Retrieve last_ingestion_datetime from silver.control_table.
+         2. Determine load type:
+              - If last_ingestion_datetime <= '2000-01-01' ? FULL INITIAL LOAD
+              - Else ? INCREMENTAL LOAD (rows where updated_at > last_ingestion_datetime)
+         3. Perform MERGE INTO silver.<table>:
+              - UPDATE existing rows
+              - INSERT new rows
+         4. Apply data cleansing rules:
+              • Lowercasing + trimming text
+              • Removing unwanted characters (e.g., '@', '1')
+              • Standardizing NULLs ? 'N/A'
+              • Normalizing email structure
+              • Enforcing valid defaults (e.g., quantity = 1 when null/zero)
+         5. Assign batch_id to each processed row.
+         6. Update silver.control_table with:
+              • last_ingestion_datetime = GETDATE()
+              • last_batch_id = batch_id
+
+ETL Benefits:
+    - Supports scalable incremental refresh of Silver tables.
+    - Ensures auditability and traceability via batch IDs.
+    - Eliminates duplicates and ensures consistent transformations.
+    - Ideal for scheduled pipeline automation in SQL Server Agent or orchestration tools.
+
+--------------------------------------------------------------------------------
 Notes:
-- This ETL pattern implements a "Silver layer" in a modern Data Lakehouse architecture.
-- Bronze layer = raw ingested data.
-- Silver layer = cleaned, conformed, and enriched data.
-- The control table ensures idempotent incremental loads and avoids duplicates.
-- Batch processing allows for auditing and traceability of ETL jobs.
+    - Bronze layer contains raw ingested data.
+    - Silver layer holds cleaned, standardized, analytics-ready datasets.
+    - This pattern follows modern Data Lakehouse incremental ingestion design.
 ================================================================================
 */
+
 USE DataWarehouse;
 GO
 
