@@ -211,3 +211,82 @@ CREATE TABLE bronze.bronze_control (
 ### Star Schema Design
 
 ![Star Schema Design](https://github.com/possibility01/Increamental-Refrersh-Full-Data-Warehouse-Project-In-SQL/blob/master/Docs/Data%20Model.jpg)
+
+### Dimension Tables
+
+#### dim_customers
+
+**Purpose:** Customer demographic and behavioral attributes  
+**Grain:** One row per unique customer  
+**Type:** Type 1 SCD (current state only)
+
+**Key Attributes:**
+- **customer_key** (INT): Surrogate key for fast joins
+- **customer_id** (NVARCHAR): Natural key from source system
+- **Demographics**: gender, age, city, marital_status
+- **Behavioral**: loyalty_score, segment, preferred_device
+- **Contact**: email, phone
+
+#### dim_product
+
+**Purpose:** Product catalog and inventory information  
+**Grain:** One row per unique product  
+**Type:** Type 1 SCD (current state only)
+
+**Key Attributes:**
+- **product_key** (INT): Surrogate key
+- **product_id** (NVARCHAR): Natural key (SKU)
+- **Hierarchy**: brand → category → product_name
+- **Pricing**: price, rating
+- **Physical**: weight_g, color, stock
+
+#### dim_payments
+
+**Purpose:** Payment transaction metadata  
+**Grain:** One row per order (deduplicated)  
+**Type:** Type 1 SCD
+
+**Special Logic:** Deduplication per order
+```sql
+-- Handles multiple payment attempts per order
+ROW_NUMBER() OVER (PARTITION BY order_id ORDER BY order_id) AS rank_
+WHERE rank_ = 1  -- Keep only first payment per order
+```
+
+**Key Attributes:**
+- **payment_key** (INT): Surrogate key
+- **payment_id** (NVARCHAR): Transaction identifier
+- **payment_method**: credit_card, paypal, bank_transfer
+- **payment_gateway**: stripe, square, braintree
+- **payment_status**: completed, pending, failed, refunded
+- **currency**, **exchange_rate**: Multi-currency support
+
+### Fact Table
+
+#### fact_order_sales
+
+**Purpose:** Order line item sales transactions  
+**Grain:** One row per order line item (most granular level)  
+**Type:** Transaction fact table
+
+
+
+
+**Foreign Keys:**
+- **customer_key** → dim_customers
+- **product_key** → dim_product
+- **payment_key** → dim_payments
+
+**Degenerate Dimensions** (stored in fact):
+- order_id, order_item_id, order_status
+
+**Measures (Metrics):**
+
+| Measure | Type | Formula | Additive? |
+|---------|------|---------|-----------|
+| `quantity` | Base | Direct from source | Fully additive |
+| `unit_price` | Base | Direct from source | Non-additive (use AVG) |
+| `tax` | Base | Direct from source | Fully additive |
+| `discount_amount` | Base | Direct from source | Fully additive |
+| `shipping_fee` | Base | Order-level cost | Semi-additive* |
+| `order_amount` | Calculated | `(unit_price × quantity) + tax - discount` | Fully additive |
