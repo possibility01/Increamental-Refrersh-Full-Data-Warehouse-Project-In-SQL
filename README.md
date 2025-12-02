@@ -91,7 +91,7 @@ The project implements a **three-tier medallion architecture** for progressive d
 ### Schema Organization
 
 DataWarehouse
-```text
+```
 ├── bronze (Raw Data Layer)
 │   ├── Tables
 │   │   ├── staging_customers
