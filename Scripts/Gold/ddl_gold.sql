@@ -152,24 +152,22 @@ WITH sales AS (
         i.order_item_id,
 		p.product_key,
         o.order_status,
-        o.shipping_method,
         pay.payment_key,
-        o.shipping_fee,
-        o.payment_terms,
-        i.fulfilled_by,
+        
         i.quantity,
         i.unit_price,
         i.tax,
         i.discount_amount,
         (i.unit_price * i.quantity) 
             +  i.tax 
-            - i.discount_amount AS order_amount
+            - i.discount_amount AS order_amount,
+		o.created_at
     FROM silver.orders o 
-   LEFT JOIN silver.order_items i 
+    JOIN silver.order_items i 
         ON o.order_id = i.order_id
-		LEFT JOIN gold.dim_product p ON  i.product_id = p.product_id
-		LEFT JOIN gold.dim_customers c ON o.customer_id =  c.customer_id
-		LEFT JOIN gold.dim_payments pay ON pay.order_id =  o.order_id
+		 JOIN gold.dim_product p ON  i.product_id = p.product_id
+		 JOIN gold.dim_customers c ON o.customer_id =  c.customer_id
+		 JOIN gold.dim_payments pay ON pay.order_id =  o.order_id
 )
 SELECT 
 		order_id,
@@ -178,19 +176,28 @@ SELECT
         order_item_id,
 		product_key,
         order_status,
-        shipping_method,
         
-        shipping_fee,
-        payment_terms,
-        fulfilled_by,
         quantity,
         unit_price,
         tax,
-        order_amount
+        order_amount,
+		created_at
 FROM sales;
 
+IF OBJECT_ID ('gold.dim_date' ,'V') IS NOT NULL 
+DROP VIEW  gold.dim_date;
+GO
+
+CREATE VIEW gold.dim_date AS
+SELECT DISTINCT
+    CAST(created_at AS DATE) as date_key,
+    YEAR(created_at) as year,
+    MONTH(created_at) as month,
+    DAY(created_at) as day,
+    DATEPART(QUARTER, created_at) as quarter,
+    DATENAME(WEEKDAY, created_at) as day_name
+FROM silver.orders;
 
 
 
-
-
+SELECT * FROM gold.fact_order_sales

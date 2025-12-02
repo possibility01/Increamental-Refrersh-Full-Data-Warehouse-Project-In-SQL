@@ -1,16 +1,92 @@
 
-# Data Warehouse  Project
+# Data Warehouse with Incremental Load - SQL Server Implementation
 
-Welcome to the **Data Warehouse and Analytics Project** repository! 🚀  
-This project demonstrates a comprehensive data warehousingDesigned as a portfolio project, it highlights industry best practices in data engineering and analytics.
+Welcome to the **Data Warehouse** repository! 🚀  
+This project demonstrates a comprehensive data warehousing Designed as a portfolio project, it highlights industry best practices in data engineering.
 
 ---
+
+## 🎯 Project Overview
+
+This project implements a **production-ready data warehouse** using SQL Server with a **medallion architecture** (Bronze-Silver-Gold) and **incremental loading** capabilities. The system is designed to efficiently process and transform e-commerce transactional data into analytics-ready dimensional models.
+
+### Key Features
+
+✅ **Incremental ETL Processing** - Only loads changed data after initial load  
+✅ **Medallion Architecture** - Three-layer data refinement (Bronze → Silver → Gold)  
+✅ **Star Schema Design** - Optimized dimensional model for BI tools  
+✅ **Data Quality & Cleansing** - Automated validation and standardization  
+✅ **Batch Tracking** - Complete data lineage and audit trail  
+✅ **Transaction Safety** - ACID compliance with error handling  
+✅ **Performance Optimized** - Efficient BULK INSERT and MERGE operations
+
+### Business Use Cases
+
+- **Sales Analytics**: Revenue trends, product performance, customer segmentation
+- **Operational Reporting**:  inventory tracking, payment processing
+- **Customer Intelligence**: Lifetime value, loyalty analysis, demographic insights
+- **Financial Reporting**: Tax collection, discount analysis, multi-currency support
+
+---
+
+
 ## 🏗️ Data Architecture
 
 The data architecture for this project follows Medallion Architecture **Bronze**, **Silver**, and **Gold** layers: ![Data Architecture](https://github.com/possibility01/Increamental-Refrersh-Full-Data-Warehouse-Project-In-SQL/blob/master/Docs/Data%20Architecture.jpg)
 
+The project implements a **three-tier medallion architecture** for progressive data refinement:
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                         DATA SOURCES                            │
+│                    CSV Files (Flat Files)                       │
+└──────────────────────────┬──────────────────────────────────────┘
+                           │
+                           ↓
+┌─────────────────────────────────────────────────────────────────┐
+│                      BRONZE LAYER (Raw)                         │
+│  • Staging tables (temporary landing zone)                     │
+│  • Persistent tables (historical raw data)                     │
+│  • Batch tracking with batch_id                                │
+│  • No transformations - data "as-is"                           │
+│  • Change Data Capture via updated_at timestamps              │
+└──────────────────────────┬──────────────────────────────────────┘
+                           │
+                           ↓
+┌─────────────────────────────────────────────────────────────────┐
+│                    SILVER LAYER (Cleansed)                      │
+│  • Data quality rules applied                                  │
+│  • Standardization (lowercase, trim, character replacement)   │
+│  • NULL handling with explicit defaults                        │
+│  • Business rule validation                                    │
+│  • Single version of truth                                     │
+└──────────────────────────┬──────────────────────────────────────┘
+                           │
+                           ↓
+┌─────────────────────────────────────────────────────────────────┐
+│                  GOLD LAYER (Analytics-Ready)                   │
+│  • Star schema dimensional model                               │
+│  • Dimension tables (Customers, Products, Payments,date)           │
+│  • Fact table (Order Sales)                                    │
+│  • Surrogate keys for performance                              │
+│  • Denormalized for query optimization                         │
+│  • BI tool integration ready                                   │
+└──────────────────────────┬──────────────────────────────────────┘
+                           │
+                           ↓
+┌─────────────────────────────────────────────────────────────────┐
+│              ANALYTICS & REPORTING LAYER                        │
+│  Power BI • Tableau • Excel • SSRS • Custom Dashboards         │
+└─────────────────────────────────────────────────────────────────┘
 
-1. **Bronze Layer**: Stores raw data as-is from the source systems. Data is ingested from CSV Files into SQL Server Database.
+### Layer Responsibilities
+
+| Layer | Purpose | Data Quality | Structure | Users |
+|-------|---------|-------------|-----------|-------|
+| **Bronze** | Landing & Audit | None (raw) | Normalized | Data Engineers |
+| **Silver** | Cleansing & Standardization | High | Normalized | Data Engineers |
+| **Gold** | Business Analytics | Highest | Denormalized | Business Analysts |
+
+1. **Bronze Layer**: Stores raw data as-is from the source systems. Data is ingested from CSV Files into SQL Server Database. Bronze layer has a staging tables for each csv -bronze.staging_(name of the csv), which pupolate the real table that feeds the silver layer, which work of the staging table table to get the old data and new data from the source and use that to upsert into the real table for new record and update any changed record from 
 2. **Silver Layer**: This layer includes data cleansing, standardization, and normalization processes to prepare data for analysis.
 3. **Gold Layer**: Houses business-ready data modeled into a star schema required for reporting and analytics.
 
